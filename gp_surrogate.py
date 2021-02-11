@@ -32,6 +32,7 @@ def gp_surrogate_model(data_x, low_dim_x, data_y, num_latent_dimensions, seed, d
                      initialization_max_tree_height=init_max_tree_height, tournament_size=2, use_linear_scaling=True,
                      use_erc=False, use_interpretability_model=False,
                      functions=[AddNode(), SubNode(), MulNode(), DivNode()],
+                     use_multi_tree=True,
                      num_sub_functions=num_sub_functions)
 
     estimator.fit(data_x, low_dim_x)
@@ -46,6 +47,33 @@ def gp_surrogate_model(data_x, low_dim_x, data_y, num_latent_dimensions, seed, d
 
     print("duplicate front length: " + str(len(front)) + " , non-duplicate front length: " + str(len(front_non_duplicate)))
     for individual in front_non_duplicate:
+
+        if individual.num_sub_functions > 0:
+            sub_function_outputs = []
+            for i in range(individual.num_sub_functions):
+                sub_function_output = individual.sub_functions[i].GetOutput(data_x)
+                sub_function_outputs.append(sub_function_output)
+            # assemble the output of sub_functions into something usable in FeatureNode
+            X_subfun = np.vstack(sub_function_outputs).transpose()
+        else:
+            X_subfun = data_x
+            # now compute output of sup_functions by re-using the ones of the sub_functions
+        outputs = []
+        fit_errors = []
+        for i in range(individual.num_sup_functions):
+
+            output = individual.sup_functions[i].GetOutput(X_subfun)
+            a = 0.0
+            b = 1.0
+            if self.use_linear_scaling:
+                b = np.cov(self.y_train[:, i], output)[0, 1] / (np.var(output) + 1e-10)
+                a = np.mean(self.y_train[:, i]) - b * np.mean(output)
+                individual.sup_functions[i].ls_a = a
+                individual.sup_functions[i].ls_b = b
+
+            scaled_output = a + b * output
+
+
         output = individual.GetOutput(data_x)
         output = individual.ls_a + individual.ls_b * output
 
