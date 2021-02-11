@@ -35,11 +35,10 @@ def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2,
         low_dim_x, model = get_lower_dim(data_x, seed, num_latent_dimensions, method)
 
     # plot the low dimensional representation of the data
-
-    if num_latent_dimensions == 2:
-        path = "gecco/" + dataset + "/" + method + "/"
-        name_save_fig = path + dataset + "_" + method + "_" + str(seed)
-        plot_low_dim(np.transpose(low_dim_x), data_y, name_save_fig)
+    #if num_latent_dimensions == 2:
+    #    path = "gecco/" + dataset + "/" + method + "/"
+    #    name_save_fig = path + dataset + "_" + method + "_" + str(seed)
+    #    plot_low_dim(np.transpose(low_dim_x), data_y, name_save_fig)
 
     print("Computing for original dataset")
     org_avg_acc, org_std_acc = k_fold_valifation_accuracy_rf(data_x, data_y, seed)
@@ -68,7 +67,7 @@ if __name__ == "__main__":
     method = "nn"
 
     for dataset in ["segmentation"]:
-        for num_latent_dimensions in [2, 3, 4, 5]:
+        for num_latent_dimensions in [2]:
 
             manager = multiprocessing.Manager()
             return_dict = manager.dict()
