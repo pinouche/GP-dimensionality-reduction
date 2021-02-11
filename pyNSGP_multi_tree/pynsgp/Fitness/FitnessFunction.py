@@ -93,7 +93,7 @@ class SymbolicRegressionFitness:
                         '''
                         fit_errors.append(fit_error)
                 # now IDK if you want mean or max, I go for mean here
-                fit_error = np.min(fit_errors)
+                fit_error = np.mean(fit_errors)
                 return fit_error
 
 
