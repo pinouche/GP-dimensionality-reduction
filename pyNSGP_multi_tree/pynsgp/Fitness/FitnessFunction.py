@@ -1,0 +1,211 @@
+import numpy as np
+from copy import deepcopy
+
+from pynsgp.Nodes.SymbolicRegressionNodes import FeatureNode
+from pynsgp.Nodes.MultiTreeRepresentation import MultiTreeIndividual
+
+class SymbolicRegressionFitness:
+
+        def __init__( self, X_train, y_train, use_linear_scaling=True, use_interpretability_model=False ):
+                self.X_train = X_train
+                self.y_train = y_train
+                self.use_linear_scaling = use_linear_scaling
+                self.use_interpretability_model = use_interpretability_model
+                self.elite = None
+                self.evaluations = 0
+
+
+        def Evaluate( self, individual ):
+
+                self.evaluations = self.evaluations + 1
+                individual.objectives = []
+
+                obj1 = self.EvaluateMeanSquaredError(individual)
+                individual.objectives.append( obj1 )
+
+                if self.use_interpretability_model:
+                        obj2 = self.EvaluatePHIsModel(individual)
+                else:
+                        obj2 = self.EvaluateLength(individual)  
+                individual.objectives.append( obj2 )
+
+                if not self.elite or individual.objectives[0] < self.elite.objectives[0]:
+                        del self.elite
+                        self.elite = deepcopy(individual)
+
+
+        def __EvaluateMeanSquaredErrorOfNormalTree(self, individual):
+                output = individual.GetOutput( self.X_train )
+                a = 0.0
+                b = 1.0
+                if self.use_linear_scaling:
+                        print(self.y_train.shape, output.shape)
+                        b = np.cov(self.y_train, output)[0,1] / (np.var(output) + 1e-10)
+                        a = np.mean(self.y_train) - b*np.mean(output)
+                        individual.ls_a = a
+                        individual.ls_b = b
+                scaled_output = a + b*output
+                fit_error = np.mean( np.square( self.y_train - scaled_output ) )
+
+                '''
+                if str(individual.GetSubtree()) == '[x12]':
+                        print(output, a, b, fit_error)
+                        print(self.y_train)
+                '''
+
+                return fit_error
+
+        def __EvaluateMeanSquaredErrorOfMultiTree(self, individual):
+                # quick check that we're not drunk
+                assert(self.y_train.shape[1] == individual.num_sup_functions)
+                # compute multi-output, starting from sub_functions
+                if individual.num_sub_functions > 0:
+                        sub_function_outputs = list()
+                        for i in range(individual.num_sub_functions):
+                                sub_function_output = individual.sub_functions[i].GetOutput(self.X_train)
+                                sub_function_outputs.append(sub_function_output)
+                        # assemble the output of sub_functions into something usable in FeatureNode
+                        X_subfun = np.vstack(sub_function_outputs).transpose()
+                else:
+                        X_subfun = self.X_train
+                # now compute output of sup_functions by re-using the ones of the sub_functions
+                outputs = list()
+                fit_errors = list()
+                for i in range(individual.num_sup_functions):
+                        
+                        output = individual.sup_functions[i].GetOutput(X_subfun)
+                        a = 0.0
+                        b = 1.0
+                        if self.use_linear_scaling:
+                                b = np.cov(self.y_train[:,i], output)[0,1] / (np.var(output) + 1e-10)
+                                a = np.mean(self.y_train[:,i]) - b*np.mean(output)
+                                individual.sup_functions[i].ls_a = a
+                                individual.sup_functions[i].ls_b = b
+
+                        scaled_output = a + b * output
+                        fit_error = np.mean(np.square(self.y_train[:,i] - scaled_output))
+                        
+                        '''
+                        if str(individual.sup_functions[i].GetSubtree()) == '[x0]' and str(individual.sub_functions[0].GetSubtree()) == '[x12]':
+                                print(output, a, b, fit_error)
+                                print(self.y_train[:,i])
+                                quit()
+                        '''
+                        fit_errors.append(fit_error)
+                # now IDK if you want mean or max, I go for mean here
+                fit_error = np.min(fit_errors)
+                return fit_error
+
+
+        def EvaluateMeanSquaredError(self, individual):
+                if isinstance(individual, MultiTreeIndividual):
+                        fit_error = self.__EvaluateMeanSquaredErrorOfMultiTree(individual)
+                else:   
+                        fit_error = self.__EvaluateMeanSquaredErrorOfNormalTree(individual)
+
+                if np.isnan(fit_error):
+                        fit_error = np.inf
+                        
+                return fit_error
+
+
+        def EvaluateLength(self, individual):
+                l = 0
+                if isinstance(individual, MultiTreeIndividual):
+                        # precompute lengths of subfunctions
+                        len_subfunctions = [len(x.GetSubtree()) for x in individual.sub_functions]
+                        for sup_function in individual.sup_functions:
+                                for node in sup_function.GetSubtree():
+                                        if isinstance(node, FeatureNode) and individual.num_sub_functions > 0:
+                                                # fetch length of sub-function
+                                                l += len_subfunctions[node.id]
+                                        else:
+                                                # count one
+                                                l += 1 
+                else:
+                        l = len(node.GetSubtree())
+                return l
+
+
+        def __EvaluatePHIsModelOfNormalTree(self, individual):
+                subtree = individual.GetSubtree()
+                n_nodes = len(subtree)
+                n_ops = 0
+                n_naops = 0
+                n_vars = 0
+                dimensions = set()
+                n_constants = 0
+                for n in subtree:
+                        if n.arity > 0:
+                                n_ops += 1
+                                if n.is_not_arithmetic:
+                                        n_naops += 1
+                        else:
+                                str_repr = str(n)
+                                if str_repr[0] == 'x':
+                                        n_vars += 1
+                                        idx = int(str_repr[1:len(str_repr)])
+                                        dimensions.add(idx)
+                                else:
+                                        n_constants += 1
+                n_nacomp = individual.Count_n_nacomp()
+                n_dim = len(dimensions)
+
+                '''
+                print('-------------------')
+                print(subtree)
+                print('nodes:',n_nodes)
+                print('dimensions', n_dim)
+                print('variables', n_vars)
+                print('constants', n_constants)
+                print('ops', n_ops)
+                print('naops', n_naops)
+                print('nacomp', n_nacomp)
+                print('------------------')
+                '''
+
+                result = self._ComputeInterpretabilityScore( n_dim, n_vars, 
+                        n_constants, n_nodes, n_ops, n_naops, n_nacomp )
+                result = -1 * result
+
+                return result
+
+        def __EvaluatePHIsModelOfMultiTree(self, individual):
+                '''
+                we have two options here, one is to assume that the user can understand
+                the parts, and then the total from them. In that case, we just compute
+                phi for each sub_function and each sup_function.
+
+                The other would be that, instead, each sup_function must be interpreted as a whole
+                of itself + sub_functions. 
+                To implement that, we can create a temp sup_function where, each time we find a FeatureNode, 
+                we replace that with a clone of the sub_function it represents.
+                
+                I assume people are smart and go with the first option.
+                '''
+                phis = list()
+                for sup_fun in individual.sup_functions:
+                        partial_phi = self.__EvaluatePHIsModelOfNormalTree(sup_fun)
+                        phis.append(partial_phi)
+                for sub_fun in individual.sub_functions:
+                        partial_phi = self.__EvaluatePHIsModelOfNormalTree(sub_fun)
+                        phis.append(partial_phi)
+                phi = np.sum(phis)
+                return phi
+
+
+        def EvaluatePHIsModel(self, individual):
+                if isinstance(individual, MultiTreeIndividual):
+                        phi = self.__EvaluatePHIsModelOfMultiTree(individual)                   
+                else:
+                        phi = self.__EvaluatePHIsModelOfNormalTree(individual)
+
+                return phi
+                
+
+        def _ComputeInterpretabilityScore(self, n_dim, n_vars, n_const, n_nodes, n_ops, na_ops, na_comp):
+                # correctness weighted by confidence:
+                features = [n_nodes, n_ops, na_ops, na_comp]
+                coeffs = [-0.00195041, -0.00502375, -0.03351907, -0.04472121]
+                result = np.sum(np.multiply(features, coeffs)) * 100
+                return result   
