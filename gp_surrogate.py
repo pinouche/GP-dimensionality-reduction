@@ -15,10 +15,6 @@ def gp_surrogate_model(data_x, low_dim_x, data_y, num_latent_dimensions, seed, d
 
     print("I AM OUT OF THE LOOP")
 
-    low_dim = []
-    len_programs = []
-    individuals = []
-
     # Prepare NSGP settings
     if share_multi_tree:
         init_max_tree_height = 3
@@ -45,6 +41,11 @@ def gp_surrogate_model(data_x, low_dim_x, data_y, num_latent_dimensions, seed, d
             front_string_format.append(individual.GetHumanExpression())
             front_non_duplicate.append(individual)
 
+    low_dim = []
+    individuals = []
+    len_programs = []
+    fitness = []
+
     print("duplicate front length: " + str(len(front)) + " , non-duplicate front length: " + str(len(front_non_duplicate)))
     for individual in front_non_duplicate:
         output = individual.GetOutput(data_x)
@@ -55,11 +56,25 @@ def gp_surrogate_model(data_x, low_dim_x, data_y, num_latent_dimensions, seed, d
             individual_output[:, i] = scaled_output
 
         low_dim.append(individual_output)
-        len_programs.append(individual.objectives[1])
         individuals.append(individual)
+        len_programs.append(individual.objectives[1])
+        fitness.append(individual.objectives[0])
 
     low_dim = np.array(low_dim)
     len_programs = np.array(len_programs)
+    individuals = np.array(individuals)
+    fitness = np.array(fitness)
+
+    # get the indices sorted by the first objective
+    indice_array = np.arange(0, len(fitness), 1)
+    zipped_list = list(zip(fitness, indice_array))
+    zipped_list.sort()
+    indices = [val[1] for val in zipped_list]
+
+    # reorder
+    low_dim = low_dim[indices]
+    len_programs = len_programs[indices]
+    individuals = individuals[indices]
 
     #if num_latent_dimensions == 2:
     #    path = "gecco/" + dataset + "/" + method + "/"
