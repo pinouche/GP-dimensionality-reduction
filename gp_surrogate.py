@@ -47,54 +47,28 @@ def gp_surrogate_model(data_x, low_dim_x, data_y, num_latent_dimensions, seed, d
 
     print("duplicate front length: " + str(len(front)) + " , non-duplicate front length: " + str(len(front_non_duplicate)))
     for individual in front_non_duplicate:
-
-        if individual.num_sub_functions > 0:
-            sub_function_outputs = []
-            for i in range(individual.num_sub_functions):
-                sub_function_output = individual.sub_functions[i].GetOutput(data_x)
-                sub_function_outputs.append(sub_function_output)
-            # assemble the output of sub_functions into something usable in FeatureNode
-            X_subfun = np.vstack(sub_function_outputs).transpose()
-        else:
-            X_subfun = data_x
-            # now compute output of sup_functions by re-using the ones of the sub_functions
-        outputs = []
-        fit_errors = []
+        output = individual.GetOutput(data_x)
+        individual_output = np.empty(output.shape)
         for i in range(individual.num_sup_functions):
 
-            output = individual.sup_functions[i].GetOutput(X_subfun)
-            a = 0.0
-            b = 1.0
-            if self.use_linear_scaling:
-                b = np.cov(self.y_train[:, i], output)[0, 1] / (np.var(output) + 1e-10)
-                a = np.mean(self.y_train[:, i]) - b * np.mean(output)
-                individual.sup_functions[i].ls_a = a
-                individual.sup_functions[i].ls_b = b
+            scaled_output = individual.sup_functions[i].ls_a + individual.sup_functions[i].ls_b * output[:, i]
+            individual_output[:, i] = scaled_output
 
-            scaled_output = a + b * output
-
-
-        output = individual.GetOutput(data_x)
-        output = individual.ls_a + individual.ls_b * output
-
-        low_dim.append(output)
-        len_programs.append(len(individual.GetSubtree()))
+        low_dim.append(individual_output)
+        len_programs.append(individual.objectives[1])
         individuals.append(individual)
 
     low_dim = np.array(low_dim)
     len_programs = np.array(len_programs)
 
-    if num_latent_dimensions == 2:
-        path = "gecco/" + dataset + "/" + method + "/"
-        name_save_fig = path + dataset + "_" + "gp_" + str(seed)
-        plot_low_dim(low_dim[:, 0, :], data_y, name_save_fig)
-
-    len_programs = np.mean(len_programs, axis=0)
+    #if num_latent_dimensions == 2:
+    #    path = "gecco/" + dataset + "/" + method + "/"
+    #    name_save_fig = path + dataset + "_" + "gp_" + str(seed)
+    #    plot_low_dim(low_dim[:, 0, :], data_y, name_save_fig)
 
     accuracy_list = []
     for index in range(low_dim.shape[0]):
         x = low_dim[index]
-        x = np.transpose(x)
 
         avg_acc, std_acc = k_fold_valifation_accuracy_rf(x, data_y, seed)
         accuracy_list.append(avg_acc)
