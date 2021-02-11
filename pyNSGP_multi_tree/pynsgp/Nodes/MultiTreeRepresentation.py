@@ -1,6 +1,8 @@
 from pynsgp.Nodes.SymbolicRegressionNodes import FeatureNode
 from pynsgp.Variation import Variation
 
+import numpy as np
+
 class MultiTreeIndividual:
   
   def __init__(self, num_sup_functions, num_sub_functions):
@@ -29,6 +31,27 @@ class MultiTreeIndividual:
         better_somewhere = True 
 
     return better_somewhere
+
+  def GetOutput( self, X ):
+    if self.num_sub_functions > 0:
+      sub_function_outputs = list()
+      for i in range(self.num_sub_functions):
+        sub_function_output = self.sub_functions[i].GetOutput(X)
+        sub_function_outputs.append(sub_function_output)
+      # assemble the output of sub_functions into something usable in FeatureNode
+      X_subfun = np.vstack(sub_function_outputs).transpose()
+    else:
+      X_subfun = X
+    # now compute output of sup_functions by re-using the ones of the sub_functions
+    sup_fun_outputs = list()
+    for i in range(self.num_sup_functions):
+      sup_fun_output = self.sup_functions[i].GetOutput(X_subfun)
+      sup_fun_outputs.append(sup_fun_output)
+
+    # the final output, should be (n * k) dimensional
+    final_output = np.vstack(sup_fun_outputs).transpose()
+    return final_output
+
 
 
   def InitializeRandom(self, 

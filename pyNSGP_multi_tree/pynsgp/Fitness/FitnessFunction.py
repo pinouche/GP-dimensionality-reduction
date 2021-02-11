@@ -59,30 +59,21 @@ class SymbolicRegressionFitness:
                 # quick check that we're not drunk
                 assert(self.y_train.shape[1] == individual.num_sup_functions)
                 # compute multi-output, starting from sub_functions
-                if individual.num_sub_functions > 0:
-                        sub_function_outputs = list()
-                        for i in range(individual.num_sub_functions):
-                                sub_function_output = individual.sub_functions[i].GetOutput(self.X_train)
-                                sub_function_outputs.append(sub_function_output)
-                        # assemble the output of sub_functions into something usable in FeatureNode
-                        X_subfun = np.vstack(sub_function_outputs).transpose()
-                else:
-                        X_subfun = self.X_train
-                # now compute output of sup_functions by re-using the ones of the sub_functions
-                outputs = list()
+
+
+                output = individual.GetOutput(self.X_train)
                 fit_errors = list()
                 for i in range(individual.num_sup_functions):
                         
-                        output = individual.sup_functions[i].GetOutput(X_subfun)
                         a = 0.0
                         b = 1.0
                         if self.use_linear_scaling:
-                                b = np.cov(self.y_train[:,i], output)[0,1] / (np.var(output) + 1e-10)
-                                a = np.mean(self.y_train[:,i]) - b*np.mean(output)
+                                b = np.cov(self.y_train[:,i], output[:,i])[0,1] / (np.var(output[:,i]) + 1e-10)
+                                a = np.mean(self.y_train[:,i]) - b*np.mean(output[:,i])
                                 individual.sup_functions[i].ls_a = a
                                 individual.sup_functions[i].ls_b = b
 
-                        scaled_output = a + b * output
+                        scaled_output = a + b * output[:,i]
                         fit_error = np.mean(np.square(self.y_train[:,i] - scaled_output))
                         
                         '''
@@ -93,7 +84,7 @@ class SymbolicRegressionFitness:
                         '''
                         fit_errors.append(fit_error)
                 # now IDK if you want mean or max, I go for mean here
-                fit_error = np.min(fit_errors)
+                fit_error = np.mean(fit_errors)
                 return fit_error
 
 
