@@ -12,7 +12,7 @@ from gp_surrogate import gp_surrogate_model
 from load_data import load_data
 
 
-def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2, deep_gp=False, number_layers=1):
+def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2, share_multi_tree=False):
     print("COMPUTING FOR RUN NUMBER: " + str(seed))
 
     dic_one_run = {}
@@ -49,8 +49,7 @@ def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2,
 
     print("Computing for method GP")
     accuracy_gp, length_list, individuals = gp_surrogate_model(data_x, low_dim_x, data_y,
-                                                               num_latent_dimensions, seed, dataset,
-                                                               method, deep_gp, number_layers)
+                                                               num_latent_dimensions, seed, dataset, method, share_multi_tree)
 
     dic_one_run["original_data_accuracy"] = org_avg_acc
     dic_one_run["teacher_accuracy"] = avg_acc
@@ -64,38 +63,33 @@ def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2,
 
 if __name__ == "__main__":
 
-    deep_gp = True
-    num_layers = 1
-
-    num_of_runs = 30
-    method = "nn"  # nn or pca
+    share_multi_tree = False
+    num_of_runs = 1
+    method = "nn"
 
     for dataset in ["segmentation"]:
-        for deep_gp in [False, True]:
-            for num_latent_dimensions in [1, 2, 3, 4, 5]:
+        for num_latent_dimensions in [2, 3, 4, 5]:
 
-                manager = multiprocessing.Manager()
-                return_dict = manager.dict()
+            manager = multiprocessing.Manager()
+            return_dict = manager.dict()
 
-                p = [multiprocessing.Process(target=low_dim_accuracy, args=(dataset, method, seed,
-                                                                            return_dict, num_latent_dimensions,
-                                                                            deep_gp, num_layers)) for seed in range(num_of_runs)]
+            p = [multiprocessing.Process(target=low_dim_accuracy, args=(dataset, method, seed,
+                                                                        return_dict, num_latent_dimensions, share_multi_tree))
+                                                                        for seed in range(num_of_runs)]
 
-                for proc in p:
-                    proc.start()
-                for proc in p:
-                    proc.join()
+            for proc in p:
+                proc.start()
+            for proc in p:
+                proc.join()
 
-                results = return_dict.values()
+            results = return_dict.values()
 
-                path = "gecco/" + dataset + "/" + method + "/"
-                file_name = path + "results_" + dataset + "_" + method + "_" + str(num_latent_dimensions)
+            path = "gecco/" + dataset + "/" + method + "/"
+            file_name = path + "results_" + dataset + "_" + method + "_" + str(num_latent_dimensions)
 
-                if deep_gp:
-                    file_name = file_name + "_deep_gp"
+            if share_multi_tree:
+                file_name = file_name + "_shared"
+            else:
+                file_name = file_name + "_not_shared"
 
-                pickle.dump(results, open(file_name + ".p", "wb"))
-
-
-
-
+            pickle.dump(results, open(file_name + ".p", "wb"))

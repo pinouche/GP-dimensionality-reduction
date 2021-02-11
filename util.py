@@ -61,47 +61,6 @@ def k_fold_valifation_accuracy_rf(data_x, data_y, seed, n_splits=10):
     return np.mean(accuracy_list), np.std(accuracy_list)
 
 
-def match_trees(arr_data, arr_len, arr_fitness, individuals, num_dim):
-    indices_list = []
-
-    for index in range(num_dim):
-        indice_array = np.arange(0, np.array(arr_fitness[index]).shape[0], 1)
-        zipped_list = list(zip(arr_fitness[index], indice_array))
-        zipped_list.sort()
-
-        indices = [val[1] for val in zipped_list]
-        indices_list.append(indices)
-
-    max_front_size = np.max([len(sublist) for sublist in indices_list])
-
-    extended_indices_list = []
-    for index in range(num_dim):
-
-        ind_list = indices_list[index]
-        if len(ind_list) < max_front_size:
-            ind_list = ind_list + [ind_list[-1]] * (max_front_size - len(ind_list))
-
-        extended_indices_list.append(ind_list)
-
-    matched_data = []
-    matched_len = []
-    matched_individual = []
-    for index in range(num_dim):
-        first_dim_data = np.array(arr_data[index])
-        first_dim_len = np.array(arr_len[index])
-        first_dim_individual = np.array(individuals[index])
-
-        ordered_data = first_dim_data[extended_indices_list[index]]
-        ordered_len = first_dim_len[extended_indices_list[index]]
-        ordered_individuals = first_dim_individual[extended_indices_list[index]]
-
-        matched_data.append(ordered_data)
-        matched_len.append(ordered_len)
-        matched_individual.append(ordered_individuals)
-
-    return np.array(matched_data), np.array(matched_len), np.array(matched_individual)
-
-
 def compute_pareto(data):
     indice_list = np.expand_dims(np.arange(0, data.shape[0], 1), 1)
     data = np.hstack((data, indice_list))
