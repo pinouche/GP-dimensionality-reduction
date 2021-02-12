@@ -39,7 +39,6 @@ class SymbolicRegressionFitness:
                 a = 0.0
                 b = 1.0
                 if self.use_linear_scaling:
-                        print(self.y_train.shape, output.shape)
                         b = np.cov(self.y_train, output)[0,1] / (np.var(output) + 1e-10)
                         a = np.mean(self.y_train) - b*np.mean(output)
                         individual.ls_a = a

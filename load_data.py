@@ -62,8 +62,6 @@ def load_madelon():
     data_x_val, data_y_val = load_madelon_dataset("./madelon/madelon_valid.data",
                                                   "./madelon/madelon_valid.labels")
 
-    print(data_y_train.shape, data_y_val.shape)
-
     data_x = np.vstack((data_x_train, data_x_val))
     data_y = np.concatenate([data_y_train, data_y_val])
 

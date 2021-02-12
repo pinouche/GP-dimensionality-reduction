@@ -3,11 +3,11 @@ from pynsgp.SKLearnInterface import pyNSGPEstimator as NSGP
 
 from sklearn.preprocessing import StandardScaler
 
-from util import plot_low_dim
 from util import k_fold_valifation_accuracy_rf
+from util import match_trees
 
 
-def gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, share_multi_tree, use_interpretability_model=False):
+def multi_tree_gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, share_multi_tree, use_interpretability_model=False):
 
     scaler = StandardScaler()
     scaler = scaler.fit(data_x)
@@ -23,9 +23,8 @@ def gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, share_
         init_max_tree_height = 7
         num_sub_functions = 0
 
-
     estimator = NSGP(pop_size=1000, max_generations=100, verbose=True, max_tree_size=100,
-                     crossover_rate=0.34, mutation_rate=0.33, op_mutation_rate=0.33, min_depth=2,
+                     crossover_rate=0.9, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
                      initialization_max_tree_height=init_max_tree_height, tournament_size=2, use_linear_scaling=True,
                      use_erc=False, use_interpretability_model=use_interpretability_model,
                      functions=[AddNode(), SubNode(), MulNode(), DivNode(), LogNode()],
@@ -85,3 +84,62 @@ def gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, share_
         accuracy_list.append(avg_acc)
 
     return accuracy_list, len_programs, individuals
+
+
+def gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, use_interpretability_model=False):
+
+    scaler = StandardScaler()
+    scaler = scaler.fit(data_x)
+    data_x = scaler.transform(data_x)
+
+    print("I AM OUT OF THE LOOP")
+
+    num_latent_dimensions = low_dim_x.shape[1]
+    low_dim = [[] for _ in range(num_latent_dimensions)]
+    len_programs = [[] for _ in range(num_latent_dimensions)]
+    fitness_programs = [[] for _ in range(num_latent_dimensions)]
+    individuals = [[] for _ in range(num_latent_dimensions)]
+
+    for index in range(num_latent_dimensions):
+
+        estimator = NSGP(pop_size=1000, max_generations=20, verbose=True, max_tree_size=100,
+                         crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
+                         initialization_max_tree_height=7, tournament_size=2, use_linear_scaling=True,
+                         use_erc=False, use_interpretability_model=use_interpretability_model,
+                         functions=[AddNode(), SubNode(), MulNode(), DivNode()],
+                         use_multi_tree=False)
+
+        estimator.fit(data_x, low_dim_x[:, index])
+        front = estimator.nsgp_.latest_front
+        front_non_duplicate = []
+        front_string_format = []
+        for individual in front:
+            if individual.GetHumanExpression() not in front_string_format:
+                front_string_format.append(individual.GetHumanExpression())
+                front_non_duplicate.append(individual)
+
+        print("duplicate front length: " + str(len(front)) + " , non-duplicate front length: " + str(len(front_non_duplicate)))
+        for individual in front_non_duplicate:
+            output = individual.GetOutput(test_data_x)
+            output = individual.ls_a + individual.ls_b * output
+
+            low_dim[index].append(output)
+            len_programs[index].append(individual.objectives[1])
+            fitness_programs[index].append(individual.objectives[0])
+            individuals[index].append(individual)
+
+    low_dim = np.array(low_dim)
+    len_programs = np.array(len_programs)
+    individuals = np.array(individuals)
+
+    gp_data, len_programs, individuals = match_trees(low_dim, len_programs, fitness_programs, individuals, num_latent_dimensions)
+
+    accuracy_list = []
+    for index in range(gp_data.shape[1]):
+        x = gp_data[:, index, :]
+        x = np.transpose(x)
+
+        avg_acc, std_acc = k_fold_valifation_accuracy_rf(x, test_data_y, seed)
+        accuracy_list.append(avg_acc)
+
+    return accuracy_list, np.transpose(len_programs), np.transpose(individuals)
