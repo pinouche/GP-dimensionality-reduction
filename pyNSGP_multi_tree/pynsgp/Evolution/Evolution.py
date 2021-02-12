@@ -62,7 +62,7 @@ class pyNSGP:
 		if self.use_multi_tree:
 			# the terminals of the sup_functions are the sub_functions
 			self.supfun_terminals = list()
-			for i in range(self.num_sub_functions):
+			for i in range(int(self.num_sub_functions)):
 				self.supfun_terminals.append(FeatureNode(i))
 
 			# if num_sub_functions is 0, then the sup_functions use the original terminal set

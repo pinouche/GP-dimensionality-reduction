@@ -6,8 +6,8 @@ import numpy as np
 class MultiTreeIndividual:
   
   def __init__(self, num_sup_functions, num_sub_functions):
-    self.num_sup_functions = num_sup_functions
-    self.num_sub_functions = num_sub_functions
+    self.num_sup_functions = int(num_sup_functions)
+    self.num_sub_functions = int(num_sub_functions)
 
     self.sup_functions = list()
     self.sub_functions = list()
