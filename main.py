@@ -82,11 +82,11 @@ if __name__ == "__main__":
 
     for dataset in ["segmentation", "wine", "ionosphere", "madelon"]:
 
-        for use_phi in [True, False]:
+        for use_phi in [True]:
 
             for share_multi_tree in [False, True]:
 
-                for num_latent_dimensions in [2, 3]:
+                for num_latent_dimensions in [2, 3, 4]:
 
                     manager = multiprocessing.Manager()
                     return_dict = manager.dict()
@@ -95,7 +95,6 @@ if __name__ == "__main__":
                                                                                 return_dict, num_latent_dimensions, share_multi_tree,
                                                                                 use_phi))
                                                                                 for seed in range(num_of_runs)]
-
                     for proc in p:
                         proc.start()
                     for proc in p:
@@ -112,5 +111,9 @@ if __name__ == "__main__":
                         file_name = file_name + "_shared"
                     else:
                         file_name = file_name + "_not_shared"
+                    if use_phi:
+                        file_name = file_name + "_phi"
+                    else:
+                        file_name = file_name + "_len"
 
                     pickle.dump(results, open(file_name + ".p", "wb"))
