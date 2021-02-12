@@ -55,6 +55,7 @@ def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2,
 
     print("Computing for method GP")
     # TODO: now it gets a bit tricky: you use the "surrogate_data" split to train the GP (if you want to "early stop" that, you'd split that thing further into 2)
+    # of course the surrogate data goes through the net to get the latent representation used as label for GP.
     # and then you use the "test_data" to train & validate the random forest (of course again report only val_acc)
     # the same validation date of the test set, you use it to compute fidelity (MSE between latent of neural net & surrogate latent)
     accuracy_gp, length_list, individuals = gp_surrogate_model(data_x, low_dim_x, data_y,
