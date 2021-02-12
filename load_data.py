@@ -4,19 +4,6 @@ import pandas as pd
 
 
 # dermatology dataset
-def load_dermatology_dataset():
-    path = "../../Documents/UCI datasets/dermatology/dermatology.data"
-
-    data = np.array(pd.read_csv(path, header=None, delimiter=","))
-    data = np.delete(data, -2, 1)
-
-    data_x_original, data_y_original = data[:, :-1].astype(int), data[:, -1].astype(int)
-    data_y_original = data_y_original - 1
-
-    return data_x_original, data_y_original
-
-
-# dermatology dataset
 def load_ionosphere_dataset():
     path = "../../Documents/UCI datasets/ionosphere/ionosphere.data"
 
@@ -34,18 +21,6 @@ def load_wine_dataset():
     data_x_original, data_y_original = data_dic["data"], data_dic["target"]
 
     return data_x_original, data_y_original
-
-
-# libras dataset
-def load_libras_dataset():
-    path = "../../Documents/UCI datasets/libras/movement_libras.data"
-
-    data = np.array(pd.read_csv(path, header=None, delimiter=","))
-
-    data_y, data_x = data[:, -1].astype(int), data[:, :-1]
-    data_y = data_y - 1
-
-    return data_x, data_y
 
 
 # segmentation dataset
@@ -109,15 +84,8 @@ def load_data(dataset):
     if dataset == "wine":
         data_x, data_y = load_wine_dataset()
 
-    elif dataset == "dermatology":
-        data_x, data_y = load_dermatology_dataset()
-        data_y = data_y - 1
-
     elif dataset == "ionosphere":
         data_x, data_y = load_ionosphere_dataset()
-
-    elif dataset == "libras":
-        data_x, data_y = load_libras_dataset()
 
     elif dataset == "segmentation":
         data_x, data_y = load_segmentation_dataset()
