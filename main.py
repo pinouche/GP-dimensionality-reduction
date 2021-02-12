@@ -13,9 +13,7 @@ from load_data import load_data
 from load_data import shuffle_data
 
 
-
-def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2, share_multi_tree=False,
-    quantile_from_pareto, use_phi):
+def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2, share_multi_tree=False, use_phi=False):
     print("COMPUTING FOR RUN NUMBER: " + str(seed))
 
     dic_one_run = {}
@@ -48,7 +46,6 @@ def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2,
         low_dim_x = get_hidden_layers(model, gp_surrogate_data_x)[3]
         low_dim_test_x = get_hidden_layers(model, test_data_x)[3]
 
-
     else:
         model = train_base_model(base_model_data_x, seed, num_latent_dimensions, method)
         low_dim_x = model.transform(gp_surrogate_data_x)
@@ -61,12 +58,8 @@ def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2,
     avg_acc, std_acc = k_fold_valifation_accuracy_rf(low_dim_test_x, test_data_y, seed)
 
     print("Computing for method GP")
-    # TODO: now it gets a bit tricky: you use the "surrogate_data" split to train the GP (if you want to "early stop" that, you'd split that thing further into 2)
-    # of course the surrogate data goes through the net to get the latent representation used as label for GP.
-    # and then you use the "test_data" to train & validate the random forest (of course again report only val_acc)
-    # the same validation date of the test set, you use it to compute fidelity (MSE between latent of neural net & surrogate latent)
-    accuracy_gp, length_list, individuals = gp_surrogate_model(gp_surrogate_data_x, low_dim_x, test_data_x, test_data_y, seed, share_multi_tree,
-        use_interpretability_model=use_phi, quantile_from_pareto=quantile_from_pareto)
+    accuracy_gp, length_list, individuals = gp_surrogate_model(gp_surrogate_data_x, low_dim_x, test_data_x, test_data_y,
+                                                               seed, share_multi_tree, use_phi)
 
     dic_one_run["original_data_accuracy"] = org_avg_acc
     dic_one_run["teacher_accuracy"] = avg_acc
@@ -74,21 +67,24 @@ def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2,
     dic_one_run["gp_length"] = length_list
     dic_one_run["champion_accuracy"] = accuracy_gp[0]
     dic_one_run["champion_length"] = length_list[0]
+    dic_one_run["median_accuracy"] = accuracy_gp[int(len(length_list)*0.5)]
+    dic_one_run["median_length"] = length_list[int(len(length_list)*0.5)]
+    dic_one_run["75%_accuracy"] = accuracy_gp[int(len(length_list)*0.25)]
+    dic_one_run["75%_champion_length"] = length_list[int(len(length_list)*0.25)]
 
     data_struc["run_number_" + str(seed)] = dic_one_run
 
 
 if __name__ == "__main__":
 
-    share_multi_tree = False
     num_of_runs = 1
     method = "nn"
 
-    for dataset in ["segmentation"]:
+    for dataset in ["segmentation", "wine", "ionosphere", "madelon"]:
 
-        for quantile_from_pareto in [1.0, 0.5]:
+        for use_phi in [True, False]:
 
-            for use_phi in [True, False]:
+            for share_multi_tree in [False, True]:
 
                 for num_latent_dimensions in [2, 3]:
 
@@ -97,8 +93,7 @@ if __name__ == "__main__":
 
                     p = [multiprocessing.Process(target=low_dim_accuracy, args=(dataset, method, seed,
                                                                                 return_dict, num_latent_dimensions, share_multi_tree,
-                                                                                quantile_from_pareto, use_phi
-                                                                                ))
+                                                                                use_phi))
                                                                                 for seed in range(num_of_runs)]
 
                     for proc in p:
