@@ -87,7 +87,7 @@ def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2,
 
 if __name__ == "__main__":
 
-    num_of_runs = 1
+    num_of_runs = 10
     method = "nn"
 
     for dataset in ["wine"]:
@@ -123,6 +123,7 @@ if __name__ == "__main__":
                         file_name = file_name + "_not_shared"
                     else:
                         file_name = file_name + "_vanilla"
+
                     if use_phi:
                         file_name = file_name + "_phi"
                     else:
