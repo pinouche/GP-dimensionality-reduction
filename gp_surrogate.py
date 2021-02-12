@@ -7,7 +7,7 @@ from util import plot_low_dim
 from util import k_fold_valifation_accuracy_rf
 
 
-def gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, share_multi_tree):
+def gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, share_multi_tree, use_interpretability_model=False, quantile_from_pareto=1.0):
 
     scaler = StandardScaler()
     scaler = scaler.fit(data_x)
@@ -23,11 +23,12 @@ def gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, share_
         init_max_tree_height = 7
         num_sub_functions = 0
 
-    estimator = NSGP(pop_size=1000, max_generations=1, verbose=True, max_tree_size=300,
-                     crossover_rate=0.9, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
+
+    estimator = NSGP(pop_size=1000, max_generations=1, verbose=True, max_tree_size=100,
+                     crossover_rate=0.34, mutation_rate=0.33, op_mutation_rate=0.33, min_depth=2,
                      initialization_max_tree_height=init_max_tree_height, tournament_size=2, use_linear_scaling=True,
-                     use_erc=False, use_interpretability_model=False,
-                     functions=[AddNode(), SubNode(), MulNode(), DivNode()],
+                     use_erc=False, use_interpretability_model=use_interpretability_model,
+                     functions=[AddNode(), SubNode(), MulNode(), DivNode(), LogNode()],
                      use_multi_tree=True,
                      num_sub_functions=num_sub_functions)
 
@@ -64,6 +65,8 @@ def gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, share_
     len_programs = np.array(len_programs)
     individuals = np.array(individuals)
     fitness = np.array(fitness)
+
+    ''' TODO: use quantile_from_pareto to get the right solution (1.0 = the best ranking in  obj1, 0.5=half way through)'''
 
     # get the indices sorted by the first objective
     indice_array = np.arange(0, len(fitness), 1)

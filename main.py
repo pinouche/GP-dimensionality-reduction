@@ -1,5 +1,5 @@
 import multiprocessing
-import pickle
+import pickle, os
 from copy import deepcopy
 import numpy as np
 
@@ -13,7 +13,9 @@ from load_data import load_data
 from load_data import shuffle_data
 
 
-def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2, share_multi_tree=False):
+
+def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2, share_multi_tree=False,
+    quantile_from_pareto, use_phi):
     print("COMPUTING FOR RUN NUMBER: " + str(seed))
 
     dic_one_run = {}
@@ -31,7 +33,7 @@ def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2,
     gp_surrogate_data_x = data_x[int(data_x.shape[0]*split_proportion[0]):int(data_x.shape[0]*split_proportion[1]*2)]
 
     # data used to train the random forest (for original data, base model, and gp surrogate model)
-    test_data_x, test_data_y = data_x[int(data_x.shape[0]*split_proportion[0]*2):], data_y[int(data_x.shape[0]*split_proportion[0]*2):]
+    test_data_x, test_data_y = data_x[int(data_x.shape[0]*(1-split_proportion[2])):], data_y[int(data_x.shape[0]*(1-split_proportion[2])):]
 
     # get the low dimensional representation of the data
     if method == "nn":
@@ -63,7 +65,8 @@ def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2,
     # of course the surrogate data goes through the net to get the latent representation used as label for GP.
     # and then you use the "test_data" to train & validate the random forest (of course again report only val_acc)
     # the same validation date of the test set, you use it to compute fidelity (MSE between latent of neural net & surrogate latent)
-    accuracy_gp, length_list, individuals = gp_surrogate_model(gp_surrogate_data_x, low_dim_x, test_data_x, test_data_y, seed, share_multi_tree)
+    accuracy_gp, length_list, individuals = gp_surrogate_model(gp_surrogate_data_x, low_dim_x, test_data_x, test_data_y, seed, share_multi_tree,
+        use_interpretability_model=use_phi, quantile_from_pareto=quantile_from_pareto)
 
     dic_one_run["original_data_accuracy"] = org_avg_acc
     dic_one_run["teacher_accuracy"] = avg_acc
@@ -82,28 +85,37 @@ if __name__ == "__main__":
     method = "nn"
 
     for dataset in ["segmentation"]:
-        for num_latent_dimensions in [2, 3]:
 
-            manager = multiprocessing.Manager()
-            return_dict = manager.dict()
+        for quantile_from_pareto in [1.0, 0.5]:
 
-            p = [multiprocessing.Process(target=low_dim_accuracy, args=(dataset, method, seed,
-                                                                        return_dict, num_latent_dimensions, share_multi_tree))
-                                                                        for seed in range(num_of_runs)]
+            for use_phi in [True, False]:
 
-            for proc in p:
-                proc.start()
-            for proc in p:
-                proc.join()
+                for num_latent_dimensions in [2, 3]:
 
-            results = return_dict.values()
+                    manager = multiprocessing.Manager()
+                    return_dict = manager.dict()
 
-            path = "gecco/" + dataset + "/" + method + "/"
-            file_name = path + "results_" + dataset + "_" + method + "_" + str(num_latent_dimensions)
+                    p = [multiprocessing.Process(target=low_dim_accuracy, args=(dataset, method, seed,
+                                                                                return_dict, num_latent_dimensions, share_multi_tree,
+                                                                                quantile_from_pareto, use_phi
+                                                                                ))
+                                                                                for seed in range(num_of_runs)]
 
-            if share_multi_tree:
-                file_name = file_name + "_shared"
-            else:
-                file_name = file_name + "_not_shared"
+                    for proc in p:
+                        proc.start()
+                    for proc in p:
+                        proc.join()
 
-            pickle.dump(results, open(file_name + ".p", "wb"))
+                    results = return_dict.values()
+
+                    path = "gecco/" + dataset + "/" + method + "/"
+
+                    os.makedirs(path, exist_ok=True)
+                    file_name = path + "results_" + dataset + "_" + method + "_" + str(num_latent_dimensions)
+
+                    if share_multi_tree:
+                        file_name = file_name + "_shared"
+                    else:
+                        file_name = file_name + "_not_shared"
+
+                    pickle.dump(results, open(file_name + ".p", "wb"))

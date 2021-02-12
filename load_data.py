@@ -5,7 +5,7 @@ import pandas as pd
 
 # dermatology dataset
 def load_ionosphere_dataset():
-    path = "../../Documents/UCI datasets/ionosphere/ionosphere.data"
+    path = "./ionosphere/ionosphere.data"
 
     data = np.array(pd.read_csv(path, header=None, delimiter=","))
 
@@ -25,8 +25,8 @@ def load_wine_dataset():
 
 # segmentation dataset
 def load_segmentation_dataset():
-    path_train = "../../Documents/UCI datasets/segmentation/segmentation.data"
-    path_test = "../../Documents/UCI datasets/segmentation/segmentation.test"
+    path_train = "./segmentation/segmentation.data"
+    path_test = "./segmentation/segmentation.test"
 
     data_train = np.array(pd.read_csv(path_train, header=None, delimiter=","))
     data_test = np.array(pd.read_csv(path_test, header=None, delimiter=","))
@@ -56,11 +56,11 @@ def load_madelon():
 
         return np.array(data_x_list), np.squeeze(data_y)
 
-    data_x_train, data_y_train = load_madelon_dataset("../../Documents/UCI datasets/madelon/madelon_train.data",
-                                                      "../../Documents/UCI datasets/madelon/madelon_train.labels")
+    data_x_train, data_y_train = load_madelon_dataset("./madelon/madelon_train.data",
+                                                      "./madelon/madelon_train.labels")
 
-    data_x_val, data_y_val = load_madelon_dataset("../../Documents/UCI datasets/madelon/madelon_valid.data",
-                                                  "../../Documents/UCI datasets/madelon/madelon_valid.labels")
+    data_x_val, data_y_val = load_madelon_dataset("./madelon/madelon_valid.data",
+                                                  "./madelon/madelon_valid.labels")
 
     print(data_y_train.shape, data_y_val.shape)
 

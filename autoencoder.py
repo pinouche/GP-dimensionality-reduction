@@ -5,7 +5,7 @@ def get_hidden_layers(model, data_x):
 
     def keras_function_layer(model_layer, data):
         hidden_func = keras.backend.function(model.layers[0].input, model_layer.output)
-        result = hidden_func([data])
+        result = hidden_func([data.astype('float32')])
 
         return result
 
