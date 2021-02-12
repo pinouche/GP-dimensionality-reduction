@@ -7,7 +7,7 @@ from util import plot_low_dim
 from util import k_fold_valifation_accuracy_rf
 
 
-def gp_surrogate_model(data_x, low_dim_x, data_y, num_latent_dimensions, seed, dataset, method, share_multi_tree):
+def gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, share_multi_tree):
 
     scaler = StandardScaler()
     scaler = scaler.fit(data_x)
@@ -48,7 +48,7 @@ def gp_surrogate_model(data_x, low_dim_x, data_y, num_latent_dimensions, seed, d
 
     print("duplicate front length: " + str(len(front)) + " , non-duplicate front length: " + str(len(front_non_duplicate)))
     for individual in front_non_duplicate:
-        output = individual.GetOutput(data_x)
+        output = individual.GetOutput(test_data_x)
         individual_output = np.empty(output.shape)
         for i in range(individual.num_sup_functions):
 
@@ -76,16 +76,11 @@ def gp_surrogate_model(data_x, low_dim_x, data_y, num_latent_dimensions, seed, d
     len_programs = len_programs[indices]
     individuals = individuals[indices]
 
-    #if num_latent_dimensions == 2:
-    #    path = "gecco/" + dataset + "/" + method + "/"
-    #    name_save_fig = path + dataset + "_" + "gp_" + str(seed)
-    #    plot_low_dim(low_dim[:, 0, :], data_y, name_save_fig)
-
     accuracy_list = []
     for index in range(low_dim.shape[0]):
         x = low_dim[index]
 
-        avg_acc, std_acc = k_fold_valifation_accuracy_rf(x, data_y, seed)
+        avg_acc, std_acc = k_fold_valifation_accuracy_rf(x, test_data_y, seed)
         accuracy_list.append(avg_acc)
 
     return accuracy_list, len_programs, individuals

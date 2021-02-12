@@ -5,11 +5,11 @@ import numpy as np
 
 from sklearn.model_selection import StratifiedKFold
 
-from util import get_lower_dim
-from util import plot_low_dim
+from util import train_base_model
 from util import k_fold_valifation_accuracy_rf
 from gp_surrogate import gp_surrogate_model
 from load_data import load_data
+from load_data import shuffle_data
 
 
 def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2, share_multi_tree=False):
@@ -17,49 +17,50 @@ def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2,
 
     dic_one_run = {}
 
+    split_proportion = [0.4, 0.4, 0.2]
+    assert np.sum(split_proportion) == 1
     data_x, data_y = load_data(dataset)
-    
-    # TODO: create 3 splits:
-    # neural_data_x & y, surrogate_data_x & y, test_data_x & y.
+    data_x, data_y = shuffle_data(data_x, data_y, seed)
+
+    # data used for the unsupervised/self-supervised DR algorithms
+    base_model_data_x = data_x[:int(data_x.shape[0]*split_proportion[0])]
+    base_model_data_y = data_y[:int(data_x.shape[0]*split_proportion[0])]
+
+    # data used to train the gp_surrogate model
+    gp_surrogate_data_x = data_x[int(data_x.shape[0]*split_proportion[0]):int(data_x.shape[0]*split_proportion[1]*2)]
+
+    # data used to train the random forest (for original data, base model, and gp surrogate model)
+    test_data_x, test_data_y = data_x[int(data_x.shape[0]*split_proportion[0]*2):], data_y[int(data_x.shape[0]*split_proportion[0]*2):]
 
     # get the low dimensional representation of the data
     if method == "nn":
-        # TODO: here you ever only use neural_data_x, and if you wish to use early stopping, you split that up
         n_splits = 5
         kf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
-        for train_indices, val_indices in kf.split(deepcopy(data_x), deepcopy(data_y)):
-            train_x, val_x = deepcopy(data_x[train_indices]), deepcopy(data_x[val_indices])
-            data_y = data_y[np.concatenate((train_indices, val_indices))]
-            data_x = data_x[np.concatenate((train_indices, val_indices))]
+        for train_indices, val_indices in kf.split(deepcopy(base_model_data_x), deepcopy(base_model_data_y)):
+            train_x, val_x = deepcopy(base_model_data_x[train_indices]), deepcopy(base_model_data_x[val_indices])
             break
 
-        low_dim_x, model = get_lower_dim(train_x, seed, num_latent_dimensions, method, val_x)
+        model = train_base_model(train_x, seed, num_latent_dimensions, method, val_x)
+        low_dim_x = model.predict(gp_surrogate_data_x)
+        low_dim_test_x = model.predict(test_data_x)
 
     else:
-        # TODO: also this guy uses neural_data_x and not other
-        low_dim_x, model = get_lower_dim(data_x, seed, num_latent_dimensions, method)
-
-    # plot the low dimensional representation of the data
-    #if num_latent_dimensions == 2:
-    #    path = "gecco/" + dataset + "/" + method + "/"
-    #    name_save_fig = path + dataset + "_" + method + "_" + str(seed)
-    #    plot_low_dim(np.transpose(low_dim_x), data_y, name_save_fig)
+        model = train_base_model(base_model_data_x, seed, num_latent_dimensions, method)
+        low_dim_x = model.transform(gp_surrogate_data_x)
+        low_dim_test_x = model.transform(test_data_x)
 
     print("Computing for original dataset")
-    # TODO: this guy HAS to use "test data", of course split and you report the validation
-    org_avg_acc, org_std_acc = k_fold_valifation_accuracy_rf(data_x, data_y, seed)
+    org_avg_acc, org_std_acc = k_fold_valifation_accuracy_rf(test_data_x, test_data_y, seed)
 
     print("Computing for method " + str(method))
-    # TODO: this guy HAS to use "test data", of course split and you report the validation
-    avg_acc, std_acc = k_fold_valifation_accuracy_rf(low_dim_x, data_y, seed)
+    avg_acc, std_acc = k_fold_valifation_accuracy_rf(low_dim_test_x, test_data_y, seed)
 
     print("Computing for method GP")
     # TODO: now it gets a bit tricky: you use the "surrogate_data" split to train the GP (if you want to "early stop" that, you'd split that thing further into 2)
     # of course the surrogate data goes through the net to get the latent representation used as label for GP.
     # and then you use the "test_data" to train & validate the random forest (of course again report only val_acc)
     # the same validation date of the test set, you use it to compute fidelity (MSE between latent of neural net & surrogate latent)
-    accuracy_gp, length_list, individuals = gp_surrogate_model(data_x, low_dim_x, data_y,
-                                                               num_latent_dimensions, seed, dataset, method, share_multi_tree)
+    accuracy_gp, length_list, individuals = gp_surrogate_model(gp_surrogate_data_x, low_dim_x, test_data_x, test_data_y, seed, share_multi_tree)
 
     dic_one_run["original_data_accuracy"] = org_avg_acc
     dic_one_run["teacher_accuracy"] = avg_acc
@@ -78,7 +79,7 @@ if __name__ == "__main__":
     method = "nn"
 
     for dataset in ["segmentation"]:
-        for num_latent_dimensions in [2]:
+        for num_latent_dimensions in [2, 3]:
 
             manager = multiprocessing.Manager()
             return_dict = manager.dict()

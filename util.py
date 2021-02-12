@@ -29,16 +29,6 @@ def plot_low_dim(low_dim_representation, data_y, name):
         plt.show()
 
 
-def shuffle_data(x_data, y_data, seed):
-    np.random.seed(seed)
-    shuffle_list = np.arange(x_data.shape[0])
-    np.random.shuffle(shuffle_list)
-    x_data = x_data[shuffle_list]
-    y_data = y_data[shuffle_list]
-
-    return x_data, y_data
-
-
 def k_fold_valifation_accuracy_rf(data_x, data_y, seed, n_splits=10):
     accuracy_list = []
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
@@ -85,7 +75,7 @@ def compute_pareto(data):
     return np.array(sorted_data)[:, :-1], pareto_idx.astype(int)
 
 
-def get_lower_dim(x_data, seed, low_dim=2, method="pca", x_val=None):
+def train_base_model(x_data, seed, low_dim=2, method="pca", x_val=None):
     scaler = StandardScaler()
     scaler = scaler.fit(x_data)
     x_data = scaler.transform(x_data)
@@ -96,7 +86,6 @@ def get_lower_dim(x_data, seed, low_dim=2, method="pca", x_val=None):
     if method == "pca":
         est = PCA(n_components=low_dim)
         est.fit(x_data)
-        x_data = est.transform(x_data)
 
     elif method == "nn":
         early_stop_callback = keras.callbacks.EarlyStopping(monitor='val_loss', patience=20, restore_best_weights=True)
@@ -105,14 +94,10 @@ def get_lower_dim(x_data, seed, low_dim=2, method="pca", x_val=None):
 
         est.fit(x_data, x_data, batch_size=16, epochs=200, verbose=0, validation_data=(x_val, x_val), callbacks=[early_stop_callback])
 
-        dataset = np.vstack((x_data, x_val))
-        list_activations = get_hidden_layers(est, dataset)
-        x_data = list_activations[3]
-
     else:
         raise ValueError('the dimensionality reduction method is not defined')
 
-    return x_data, est
+    return est
 
 
 

@@ -95,6 +95,16 @@ def load_madelon():
     return data_x, data_y
 
 
+def shuffle_data(x_data, y_data, seed):
+    np.random.seed(seed)
+    shuffle_list = np.arange(x_data.shape[0])
+    np.random.shuffle(shuffle_list)
+    x_data = x_data[shuffle_list]
+    y_data = y_data[shuffle_list]
+
+    return x_data, y_data
+
+
 def load_data(dataset):
     if dataset == "wine":
         data_x, data_y = load_wine_dataset()
