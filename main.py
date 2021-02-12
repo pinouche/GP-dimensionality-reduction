@@ -18,9 +18,13 @@ def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2,
     dic_one_run = {}
 
     data_x, data_y = load_data(dataset)
+    
+    # TODO: create 3 splits:
+    # neural_data_x & y, surrogate_data_x & y, test_data_x & y.
 
     # get the low dimensional representation of the data
     if method == "nn":
+        # TODO: here you ever only use neural_data_x, and if you wish to use early stopping, you split that up
         n_splits = 5
         kf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
         for train_indices, val_indices in kf.split(deepcopy(data_x), deepcopy(data_y)):
@@ -32,6 +36,7 @@ def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2,
         low_dim_x, model = get_lower_dim(train_x, seed, num_latent_dimensions, method, val_x)
 
     else:
+        # TODO: also this guy uses neural_data_x and not other
         low_dim_x, model = get_lower_dim(data_x, seed, num_latent_dimensions, method)
 
     # plot the low dimensional representation of the data
@@ -41,12 +46,17 @@ def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2,
     #    plot_low_dim(np.transpose(low_dim_x), data_y, name_save_fig)
 
     print("Computing for original dataset")
+    # TODO: this guy HAS to use "test data", of course split and you report the validation
     org_avg_acc, org_std_acc = k_fold_valifation_accuracy_rf(data_x, data_y, seed)
 
     print("Computing for method " + str(method))
+    # TODO: this guy HAS to use "test data", of course split and you report the validation
     avg_acc, std_acc = k_fold_valifation_accuracy_rf(low_dim_x, data_y, seed)
 
     print("Computing for method GP")
+    # TODO: now it gets a bit tricky: you use the "surrogate_data" split to train the GP (if you want to "early stop" that, you'd split that thing further into 2)
+    # and then you use the "test_data" to train & validate the random forest (of course again report only val_acc)
+    # the same validation date of the test set, you use it to compute fidelity (MSE between latent of neural net & surrogate latent)
     accuracy_gp, length_list, individuals = gp_surrogate_model(data_x, low_dim_x, data_y,
                                                                num_latent_dimensions, seed, dataset, method, share_multi_tree)
 
