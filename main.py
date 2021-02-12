@@ -5,6 +5,7 @@ import numpy as np
 
 from sklearn.model_selection import StratifiedKFold
 
+from autoencoder import get_hidden_layers
 from util import train_base_model
 from util import k_fold_valifation_accuracy_rf
 from gp_surrogate import gp_surrogate_model
@@ -41,8 +42,10 @@ def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2,
             break
 
         model = train_base_model(train_x, seed, num_latent_dimensions, method, val_x)
-        low_dim_x = model.predict(gp_surrogate_data_x)
-        low_dim_test_x = model.predict(test_data_x)
+
+        low_dim_x = get_hidden_layers(model, gp_surrogate_data_x)[3]
+        low_dim_test_x = get_hidden_layers(model, test_data_x)[3]
+
 
     else:
         model = train_base_model(base_model_data_x, seed, num_latent_dimensions, method)
