@@ -25,7 +25,7 @@ def multi_tree_gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, s
         num_sub_functions = 0
 
     estimator = NSGP(pop_size=1000, max_generations=100, verbose=True, max_tree_size=100,
-                     crossover_rate=0.9, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
+                     crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
                      initialization_max_tree_height=init_max_tree_height, tournament_size=2, use_linear_scaling=True,
                      use_erc=False, use_interpretability_model=use_interpretability_model,
                      functions=[AddNode(), SubNode(), MulNode(), DivNode(), LogNode()],
