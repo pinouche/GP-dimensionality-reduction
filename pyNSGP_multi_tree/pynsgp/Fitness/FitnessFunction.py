@@ -113,7 +113,7 @@ class SymbolicRegressionFitness:
                                                 # count one
                                                 l += 1 
                 else:
-                        l = len(node.GetSubtree())
+                        l = len(individual.GetSubtree())
                 return l
 
 
