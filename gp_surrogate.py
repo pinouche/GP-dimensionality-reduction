@@ -120,6 +120,7 @@ def gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, use_in
                 front_string_format.append(individual.GetHumanExpression())
                 front_non_duplicate.append(individual)
 
+
         print("duplicate front length: " + str(len(front)) + " , non-duplicate front length: " + str(len(front_non_duplicate)))
         for individual in front_non_duplicate:
             output = individual.GetOutput(test_data_x)
