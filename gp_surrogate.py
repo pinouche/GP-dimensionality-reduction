@@ -12,6 +12,7 @@ def multi_tree_gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, s
     scaler = StandardScaler()
     scaler = scaler.fit(data_x)
     data_x = scaler.transform(data_x)
+    test_data_x = scaler.transform(test_data_x)
 
     print("I AM OUT OF THE LOOP")
 
@@ -91,6 +92,7 @@ def gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, use_in
     scaler = StandardScaler()
     scaler = scaler.fit(data_x)
     data_x = scaler.transform(data_x)
+    test_data_x = scaler.transform(test_data_x)
 
     print("I AM OUT OF THE LOOP")
 
