@@ -1,26 +1,5 @@
-from sklearn import datasets
 import numpy as np
 import pandas as pd
-
-
-# dermatology dataset
-def load_ionosphere_dataset():
-    path = "./ionosphere/ionosphere.data"
-
-    data = np.array(pd.read_csv(path, header=None, delimiter=","))
-
-    data_y, data_x = data[:, 0].astype(int), data[:, 1:]
-    data_x = np.delete(data_x, -1, 1)
-
-    return data_x, data_y
-
-
-# wine dataset
-def load_wine_dataset():
-    data_dic = datasets.load_wine()
-    data_x_original, data_y_original = data_dic["data"], data_dic["target"]
-
-    return data_x_original, data_y_original
 
 
 # segmentation dataset
@@ -68,6 +47,38 @@ def load_madelon():
     return data_x, data_y
 
 
+def load_winequality_dataset():
+    path_red_wine = "./wine_quality/winequality-red.csv"
+    path_white_wine = "./wine_quality/winequality-white.csv"
+
+    data_red = pd.read_csv(path_red_wine, delimiter=";")
+    data_white = pd.read_csv(path_white_wine, delimiter=";")
+
+    data = np.vstack((data_red, data_white))
+    data_x, data_y = data[:, :-1], data[:, -1]
+
+    return data_x, data_y
+
+
+def load_credit_dataset():
+    path = "./credit/credit.data"
+
+    data = np.array(pd.read_csv(path, header=None, delimiter=","))
+
+    data_list = []
+
+    for index in range(data.shape[0]):
+        row = [float(value) for value in data[index][0].split(" ") if value.isnumeric()]
+        data_list.append(row)
+
+    data_list = np.array(data_list)
+
+    data_x = data_list[:, :-1]
+    data_y = data_list[:, -1] - 1
+
+    return data_x, data_y
+
+
 def shuffle_data(x_data, y_data, seed):
     np.random.seed(seed)
     shuffle_list = np.arange(x_data.shape[0])
@@ -79,11 +90,11 @@ def shuffle_data(x_data, y_data, seed):
 
 
 def load_data(dataset):
-    if dataset == "wine":
-        data_x, data_y = load_wine_dataset()
+    if dataset == "winequality":
+        data_x, data_y = load_winequality_dataset()
 
-    elif dataset == "ionosphere":
-        data_x, data_y = load_ionosphere_dataset()
+    elif dataset == "credit":
+        data_x, data_y = load_credit_dataset()
 
     elif dataset == "segmentation":
         data_x, data_y = load_segmentation_dataset()

@@ -66,8 +66,6 @@ def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2,
     dic_one_run["original_data_accuracy"] = org_avg_acc
     dic_one_run["teacher_accuracy"] = avg_acc
     dic_one_run["gp_accuracy"] = accuracy_gp
-    print(accuracy_gp)
-
     dic_one_run["gp_length"] = length_list
 
     dic_one_run["champion_individual"] = individuals[0]
