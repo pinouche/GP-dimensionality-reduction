@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # pyNSGP
 This Python 3 code is an implementation of multi-objective genetic programming using NSGA-II for symbolic regression.
 
@@ -19,3 +20,6 @@ If you use this code, please support our research by citing the related [paper](
 > M. Virgolin, A. De Lorenzo, E. Medvet, F. Randone. "Learning a Formula of Interpretability to Learn Interpretable Formulas". arXiv preprint arXiv:2004.11170 (2020)
 
 For the other part of the code related to this work, see [this repository](https://github.com/MaLeLabTs/GPFormulasInterpretability). 
+=======
+multi-objective genetic programming surrogate for unsupervised learning
+>>>>>>> eb8672fcfe66e593c745d9aa14518048ebc45f07

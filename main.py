@@ -5,14 +5,13 @@ import numpy as np
 from autoencoder import get_hidden_layers
 from util import train_base_model
 from util import k_fold_valifation_accuracy_rf
-from util import plot_low_dim
 from gp_surrogate import multi_tree_gp_surrogate_model
 from gp_surrogate import gp_surrogate_model
 from load_data import load_data
 from load_data import shuffle_data
 
 
-def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2, share_multi_tree=False, use_phi=False):
+def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2, share_multi_tree=False, use_phi=False, manifold_fitness=False):
     print("COMPUTING FOR RUN NUMBER: " + str(seed))
 
     dic_one_run = {}
@@ -24,11 +23,9 @@ def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2,
 
     # data used for the unsupervised/self-supervised DR algorithms
     base_model_data_x = data_x[:int(data_x.shape[0]*split_proportion[0])]
-    base_model_data_y = data_y[:int(data_x.shape[0]*split_proportion[0])]
 
     # data used to train the gp_surrogate model
     gp_surrogate_data_x = data_x[int(data_x.shape[0]*split_proportion[0]):int(data_x.shape[0]*(split_proportion[1]+split_proportion[0]))]
-    gp_surrogate_data_y = data_y[int(data_x.shape[0]*split_proportion[0]):int(data_x.shape[0]*(split_proportion[1]+split_proportion[0]))]
 
     # data used to train the random forest (for original data, base model, and gp surrogate model)
     test_data_x, test_data_y = data_x[int(data_x.shape[0]*(1-split_proportion[2])):], data_y[int(data_x.shape[0]*(1-split_proportion[2])):]
@@ -39,11 +36,6 @@ def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2,
 
         low_dim_x = get_hidden_layers(model, gp_surrogate_data_x)[3]
         low_dim_test_x = get_hidden_layers(model, test_data_x)[3]
-
-        if num_latent_dimensions == 2:
-            plot_low_dim(base_model_data_x, base_model_data_y)
-            plot_low_dim(low_dim_x, gp_surrogate_data_y)
-            plot_low_dim(low_dim_test_x, test_data_y)
 
     else:
         model = train_base_model(base_model_data_x, seed, num_latent_dimensions, method)
@@ -59,7 +51,7 @@ def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2,
     print("Computing for method GP")
     if share_multi_tree is not None:
         accuracy_gp, length_list, individuals = multi_tree_gp_surrogate_model(gp_surrogate_data_x, low_dim_x, test_data_x, test_data_y,
-                                                                              seed, share_multi_tree, use_phi)
+                                                                              seed, share_multi_tree, use_phi, manifold_fitness)
     else:
         accuracy_gp, length_list, individuals = gp_surrogate_model(gp_surrogate_data_x, low_dim_x, test_data_x, test_data_y, seed, use_phi)
 
@@ -85,14 +77,17 @@ def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2,
 
 if __name__ == "__main__":
 
-    num_of_runs = 10
+    num_of_runs = 1
     method = "nn"
 
-    for dataset in ["wine"]:
+    manifold_fitness = True
 
-        for use_phi in [True]:
+    for dataset in ["winequality"]:
+        for use_phi in [False]:
+            for share_multi_tree in [False]:  # True: shared, multi-tree; False: non-shared, multi-tree; None: vanilla GP (non-shared, not multi-tree)
 
-            for share_multi_tree in [None]:
+                if share_multi_tree is None and manifold_fitness:
+                    raise ValueError("the GP representation is not multi-tree and the fitness function is manifold function!")
 
                 for num_latent_dimensions in [2]:
 
@@ -101,7 +96,7 @@ if __name__ == "__main__":
 
                     p = [multiprocessing.Process(target=low_dim_accuracy, args=(dataset, method, seed,
                                                                                 return_dict, num_latent_dimensions, share_multi_tree,
-                                                                                use_phi))
+                                                                                use_phi, manifold_fitness))
                                                                                 for seed in range(num_of_runs)]
                     for proc in p:
                         proc.start()
@@ -119,7 +114,7 @@ if __name__ == "__main__":
                         file_name = file_name + "_shared"
                     elif not share_multi_tree:
                         file_name = file_name + "_not_shared"
-                    else:
+                    elif share_multi_tree is None:
                         file_name = file_name + "_vanilla"
 
                     if use_phi:

@@ -7,7 +7,8 @@ from util import k_fold_valifation_accuracy_rf
 from util import match_trees
 
 
-def multi_tree_gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, share_multi_tree, use_interpretability_model=False):
+def multi_tree_gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, share_multi_tree, use_interpretability_model=False,
+                                  use_manifold_fitness=False):
 
     scaler = StandardScaler()
     scaler = scaler.fit(data_x)
@@ -24,12 +25,18 @@ def multi_tree_gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, s
         init_max_tree_height = 7
         num_sub_functions = 0
 
+    if use_manifold_fitness:
+        use_linear_scaling = False
+    else:
+        use_linear_scaling = True
+
     estimator = NSGP(pop_size=1000, max_generations=100, verbose=True, max_tree_size=100,
                      crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
-                     initialization_max_tree_height=init_max_tree_height, tournament_size=2, use_linear_scaling=True,
+                     initialization_max_tree_height=init_max_tree_height, tournament_size=2, use_linear_scaling=use_linear_scaling,
                      use_erc=False, use_interpretability_model=use_interpretability_model,
                      functions=[AddNode(), SubNode(), MulNode(), DivNode()],
                      use_multi_tree=True,
+                     use_manifold_fitness=use_manifold_fitness,
                      num_sub_functions=num_sub_functions)
 
     estimator.fit(data_x, low_dim_x)
@@ -104,11 +111,12 @@ def gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, use_in
 
     for index in range(num_latent_dimensions):
 
-        estimator = NSGP(pop_size=1000, max_generations=20, verbose=True, max_tree_size=100,
+        estimator = NSGP(pop_size=1000, max_generations=100, verbose=True, max_tree_size=100,
                          crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
                          initialization_max_tree_height=7, tournament_size=2, use_linear_scaling=True,
                          use_erc=False, use_interpretability_model=use_interpretability_model,
                          functions=[AddNode(), SubNode(), MulNode(), DivNode()],
+                         use_manifold_fitness=False,
                          use_multi_tree=False)
 
         estimator.fit(data_x, low_dim_x[:, index])
@@ -119,7 +127,6 @@ def gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, use_in
             if individual.GetHumanExpression() not in front_string_format:
                 front_string_format.append(individual.GetHumanExpression())
                 front_non_duplicate.append(individual)
-
 
         print("duplicate front length: " + str(len(front)) + " , non-duplicate front length: " + str(len(front_non_duplicate)))
         for individual in front_non_duplicate:
