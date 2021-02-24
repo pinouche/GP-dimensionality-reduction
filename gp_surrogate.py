@@ -10,6 +10,9 @@ from util import match_trees
 def multi_tree_gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, share_multi_tree, use_interpretability_model=False,
                                   use_manifold_fitness=False):
 
+    if use_manifold_fitness:
+        data_x = np.concatenate(data_x, )
+
     scaler = StandardScaler()
     scaler = scaler.fit(data_x)
     data_x = scaler.transform(data_x)

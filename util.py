@@ -74,22 +74,13 @@ def compute_pareto(data):
     return np.array(sorted_data)[:, :-1], pareto_idx.astype(int)
 
 
-def train_base_model(x_data, seed, low_dim=2, method="pca"):
+def train_base_model(x_data, seed, low_dim=2):
     scaler = StandardScaler()
     scaler = scaler.fit(x_data)
     x_data = scaler.transform(x_data)
 
-    if method == "pca":
-        est = PCA(n_components=low_dim)
-        est.fit(x_data)
-
-    elif method == "nn":
-        est = nn_autoencoder(seed, x_data.shape[1], low_dim)
-
-        est.fit(x_data, x_data, batch_size=16, epochs=200, verbose=0)
-
-    else:
-        raise ValueError('the dimensionality reduction method is not defined')
+    est = nn_autoencoder(seed, x_data.shape[1], low_dim)
+    est.fit(x_data, x_data, batch_size=16, epochs=200, verbose=0)
 
     return est
 

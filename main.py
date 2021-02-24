@@ -11,36 +11,28 @@ from load_data import load_data
 from load_data import shuffle_data
 
 
-def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2, share_multi_tree=False, use_phi=False, manifold_fitness=False):
+def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_multi_tree=False, use_phi=False, manifold_fitness=False):
     print("COMPUTING FOR RUN NUMBER: " + str(seed))
 
     dic_one_run = {}
 
-    split_proportion = [0.5, 0.4, 0.1]
+    split_proportion = [0.6, 0.3, 0.1]
     assert np.sum(split_proportion) == 1
     data_x, data_y = load_data(dataset)
     data_x, data_y = shuffle_data(data_x, data_y, seed)
 
     # data used for the unsupervised/self-supervised DR algorithms
     base_model_data_x = data_x[:int(data_x.shape[0]*split_proportion[0])]
-
     # data used to train the gp_surrogate model
     gp_surrogate_data_x = data_x[int(data_x.shape[0]*split_proportion[0]):int(data_x.shape[0]*(split_proportion[1]+split_proportion[0]))]
-
     # data used to train the random forest (for original data, base model, and gp surrogate model)
     test_data_x, test_data_y = data_x[int(data_x.shape[0]*(1-split_proportion[2])):], data_y[int(data_x.shape[0]*(1-split_proportion[2])):]
 
     # get the low dimensional representation of the data
-    if method == "nn":
-        model = train_base_model(base_model_data_x, seed, num_latent_dimensions, method)
+    model = train_base_model(base_model_data_x, seed, num_latent_dimensions)
 
-        low_dim_x = get_hidden_layers(model, gp_surrogate_data_x)[3]
-        low_dim_test_x = get_hidden_layers(model, test_data_x)[3]
-
-    else:
-        model = train_base_model(base_model_data_x, seed, num_latent_dimensions, method)
-        low_dim_x = model.transform(gp_surrogate_data_x)
-        low_dim_test_x = model.transform(test_data_x)
+    low_dim_x = get_hidden_layers(model, gp_surrogate_data_x)[3]
+    low_dim_test_x = get_hidden_layers(model, test_data_x)[3]
 
     print("Computing for original dataset")
     org_avg_acc, org_std_acc = k_fold_valifation_accuracy_rf(test_data_x, test_data_y, seed)
@@ -78,12 +70,11 @@ def low_dim_accuracy(dataset, method, seed, data_struc, num_latent_dimensions=2,
 if __name__ == "__main__":
 
     num_of_runs = 1
-    method = "nn"
 
-    manifold_fitness = True
+    manifold_fitness = False
 
     for dataset in ["observatory"]:
-        for use_phi in [False]:
+        for use_phi in [True]:
             for share_multi_tree in [False]:  # True: shared, multi-tree; False: non-shared, multi-tree; None: vanilla GP (non-shared, not multi-tree)
 
                 if share_multi_tree is None and manifold_fitness:
@@ -94,8 +85,7 @@ if __name__ == "__main__":
                     manager = multiprocessing.Manager()
                     return_dict = manager.dict()
 
-                    p = [multiprocessing.Process(target=low_dim_accuracy, args=(dataset, method, seed,
-                                                                                return_dict, num_latent_dimensions, share_multi_tree,
+                    p = [multiprocessing.Process(target=low_dim_accuracy, args=(dataset, seed, return_dict, num_latent_dimensions, share_multi_tree,
                                                                                 use_phi, manifold_fitness))
                                                                                 for seed in range(num_of_runs)]
                     for proc in p:
@@ -105,10 +95,10 @@ if __name__ == "__main__":
 
                     results = return_dict.values()
 
-                    path = "gecco/" + dataset + "/" + method + "/"
+                    path = "gecco/" + dataset + "/"
 
                     os.makedirs(path, exist_ok=True)
-                    file_name = path + "results_" + dataset + "_" + method + "_" + str(num_latent_dimensions)
+                    file_name = path + "results_" + dataset + "_" + str(num_latent_dimensions)
 
                     if share_multi_tree:
                         file_name = file_name + "_shared"
