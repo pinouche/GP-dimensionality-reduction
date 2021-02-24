@@ -1,8 +1,7 @@
 import numpy as np
 from copy import deepcopy
 import random
-from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.preprocessing import scale
+from scipy.spatial.distance import pdist
 
 from pynsgp.Nodes.SymbolicRegressionNodes import FeatureNode
 from pynsgp.Nodes.MultiTreeRepresentation import MultiTreeIndividual
@@ -18,10 +17,6 @@ class SymbolicRegressionFitness:
         self.use_manifold_fitness = use_manifold_fitness
         self.elite = None
         self.evaluations = 0
-
-        self.similarity_matrix = None
-        if self.use_manifold_fitness:
-            self.similarity_matrix = cosine_similarity(scale(self.X_train))
 
     def Evaluate(self, individual):
 
@@ -101,16 +96,17 @@ class SymbolicRegressionFitness:
 
         # quick checks that we're not drunk
         assert (self.y_train.shape[1] == individual.num_sup_functions)
-        assert batch_size <= self.similarity_matrix.shape[0]
+        assert batch_size <= self.X_train.shape[0]
 
         random.seed(self.evaluations)
-        indices_vector = random.sample(range(self.similarity_matrix.shape[0]), batch_size)
+        indices_vector = random.sample(range(self.X_train.shape[0]), batch_size)
+
+        similarity_matrix_batch = pdist(self.X_train[indices_vector], 'euclidean')
 
         prediction_batch = self.X_train[indices_vector]
         output = individual.GetOutput(prediction_batch)
 
-        similarity_matrix_batch = self.similarity_matrix[indices_vector, indices_vector]
-        similarity_matrix_pred = cosine_similarity(output)
+        similarity_matrix_pred = pdist(output, 'euclidean')
 
         cost = np.sum(np.abs(similarity_matrix_batch - similarity_matrix_pred))
 

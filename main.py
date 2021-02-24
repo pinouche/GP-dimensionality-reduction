@@ -82,7 +82,7 @@ if __name__ == "__main__":
 
     manifold_fitness = True
 
-    for dataset in ["winequality"]:
+    for dataset in ["observatory"]:
         for use_phi in [False]:
             for share_multi_tree in [False]:  # True: shared, multi-tree; False: non-shared, multi-tree; None: vanilla GP (non-shared, not multi-tree)
 
@@ -116,6 +116,9 @@ if __name__ == "__main__":
                         file_name = file_name + "_not_shared"
                     elif share_multi_tree is None:
                         file_name = file_name + "_vanilla"
+
+                    if manifold_fitness:
+                        file_name = file_name + "_manifold_fitness"
 
                     if use_phi:
                         file_name = file_name + "_phi"
