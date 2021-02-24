@@ -1,6 +1,5 @@
 import multiprocessing
 import pickle, os
-import numpy as np
 
 from autoencoder import get_hidden_layers
 from util import train_base_model
@@ -17,7 +16,7 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_m
     dic_one_run = {}
 
     split_proportion = [0.6, 0.3, 0.1]
-    assert np.sum(split_proportion) == 1
+
     data_x, data_y = load_data(dataset)
     data_x, data_y = shuffle_data(data_x, data_y, seed)
 
@@ -37,7 +36,7 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_m
     print("Computing for original dataset")
     org_avg_acc, org_std_acc = k_fold_valifation_accuracy_rf(test_data_x, test_data_y, seed)
 
-    print("Computing for method " + str(method))
+    print("Computing for teacher")
     avg_acc, std_acc = k_fold_valifation_accuracy_rf(low_dim_test_x, test_data_y, seed)
 
     print("Computing for method GP")
@@ -71,7 +70,7 @@ if __name__ == "__main__":
 
     num_of_runs = 1
 
-    manifold_fitness = False
+    manifold_fitness = True
 
     for dataset in ["observatory"]:
         for use_phi in [True]:
