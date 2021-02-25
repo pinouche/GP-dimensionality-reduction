@@ -73,7 +73,7 @@ if __name__ == "__main__":
     manifold_fitness = True
 
     for dataset in ["observatory"]:
-        for use_phi in [True]:
+        for use_phi in [False]:
             for share_multi_tree in [False]:  # True: shared, multi-tree; False: non-shared, multi-tree; None: vanilla GP (non-shared, not multi-tree)
 
                 if share_multi_tree is None and manifold_fitness:

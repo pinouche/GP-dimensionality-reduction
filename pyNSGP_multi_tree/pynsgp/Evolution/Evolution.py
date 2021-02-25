@@ -131,14 +131,12 @@ class pyNSGP:
 
 			else:
 				g = Variation.GenerateRandomTree( self.functions, self.terminals, curr_max_depth, curr_height=0, method='grow', min_depth=self.min_depth )
-				f = Variation.GenerateRandomTree( self.functions, self.terminals, curr_max_depth, curr_height=0, method='full', min_depth=self.min_depth ) 
+				f = Variation.GenerateRandomTree( self.functions, self.terminals, curr_max_depth, curr_height=0, method='full', min_depth=self.min_depth )
 
-			self.fitness_function.Evaluate( g )
-			self.population.append( g )
-			self.fitness_function.Evaluate( f )
-			self.population.append( f )
-
-
+			self.fitness_function.Evaluate(g)
+			self.population.append(g)
+			self.fitness_function.Evaluate(f)
+			self.population.append(f)
 
 		while not self.__ShouldTerminate():
 
@@ -162,13 +160,13 @@ class pyNSGP:
 						'''
 						tot_num_components = o.num_sub_functions + o.num_sup_functions
 						for i in range(o.num_sub_functions):
-							if ( random() < self.crossover_rate / tot_num_components ):
+							if random() < self.crossover_rate / tot_num_components:
 								o.sub_functions[i] = Variation.SubtreeCrossover( o.sub_functions[i], selected[ randint( self.pop_size ) ].sub_functions[i] )
 								variation_event_happened = True
-							elif ( random() < self.mutation_rate / tot_num_components):
+							elif random() < self.mutation_rate / tot_num_components:
 								o.sub_functions[i] = Variation.SubtreeMutation( o.sub_functions[i], self.functions, self.terminals, max_height=self.initialization_max_tree_height )
 								variation_event_happened = True
-							elif ( random() < self.op_mutation_rate / tot_num_components ):
+							elif random() < self.op_mutation_rate / tot_num_components:
 								o.sub_functions[i] = Variation.OnePointMutation( o.sub_functions[i], self.functions, self.terminals )
 								variation_event_happened = True
 
@@ -177,13 +175,13 @@ class pyNSGP:
 								o.sub_functions[i] = deepcopy( selected[i].sub_functions[i] )
 							
 						for i in range(o.num_sup_functions):
-							if ( random() < self.crossover_rate / tot_num_components ):
+							if random() < self.crossover_rate / tot_num_components:
 								o.sup_functions[i] = Variation.SubtreeCrossover( o.sup_functions[i], selected[ randint( self.pop_size ) ].sup_functions[i] )
 								variation_event_happened = True
-							elif ( random() < self.mutation_rate / tot_num_components):
+							elif random() < self.mutation_rate / tot_num_components:
 								o.sup_functions[i] = Variation.SubtreeMutation( o.sup_functions[i], self.functions, self.supfun_terminals, max_height=self.initialization_max_tree_height )
 								variation_event_happened = True
-							elif ( random() < self.op_mutation_rate / tot_num_components ):
+							elif random() < self.op_mutation_rate / tot_num_components:
 								o.sup_functions[i] = Variation.OnePointMutation( o.sup_functions[i], self.functions, self.supfun_terminals )
 								variation_event_happened = True
 
@@ -195,13 +193,13 @@ class pyNSGP:
 				# variation of normal individuals
 				else:
 					while not variation_event_happened:
-						if ( random() < self.crossover_rate ):
+						if random() < self.crossover_rate:
 							o = Variation.SubtreeCrossover( o, selected[ randint( self.pop_size ) ] )
 							variation_event_happened = True
-						elif ( random() < self.mutation_rate ):
+						elif random() < self.mutation_rate:
 							o = Variation.SubtreeMutation( o, self.functions, self.terminals, max_height=self.initialization_max_tree_height )
 							variation_event_happened = True
-						elif ( random() < self.op_mutation_rate ):
+						elif random() < self.op_mutation_rate:
 							o = Variation.OnePointMutation( o, self.functions, self.terminals )
 							variation_event_happened = True
 
@@ -232,7 +230,7 @@ class pyNSGP:
 				fronts[curr_front_idx].sort(key=lambda x: x.crowding_distance, reverse=True) 
 
 				while len(fronts[curr_front_idx]) > 0 and len(new_population) < self.pop_size:
-					new_population.append( fronts[curr_front_idx][0] )	# pop first because they were sorted in desc order
+					new_population.append( fronts[curr_front_idx][0])  # pop first because they were sorted in desc order
 					fronts[curr_front_idx].pop(0)
 
 				# clean up leftovers

@@ -1,12 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import keras
 
 from sklearn.model_selection import KFold
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
 
 from operator import itemgetter
 
