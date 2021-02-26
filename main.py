@@ -10,7 +10,8 @@ from load_data import load_data
 from load_data import shuffle_data
 
 
-def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_multi_tree=False, use_phi=False, manifold_fitness=False):
+def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_multi_tree=False, use_phi=False, manifold_fitness=False,
+                     stacked_gp=False, num_of_layers=1):
     print("COMPUTING FOR RUN NUMBER: " + str(seed))
 
     dic_one_run = {}
@@ -42,7 +43,8 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_m
     print("Computing for method GP")
     if share_multi_tree is not None:
         accuracy_gp, length_list, individuals = multi_tree_gp_surrogate_model(gp_surrogate_data_x, low_dim_x, test_data_x, test_data_y,
-                                                                              seed, share_multi_tree, use_phi, manifold_fitness)
+                                                                              seed, share_multi_tree, use_phi, manifold_fitness,
+                                                                              stacked_gp, num_of_layers)
     else:
         accuracy_gp, length_list, individuals = gp_surrogate_model(gp_surrogate_data_x, low_dim_x, test_data_x, test_data_y, seed, use_phi)
 
@@ -70,7 +72,9 @@ if __name__ == "__main__":
 
     num_of_runs = 1
 
-    manifold_fitness = True
+    manifold_fitness = False
+    stacked_gp = True
+    num_of_layers = 2
 
     for dataset in ["observatory"]:
         for use_phi in [False]:
@@ -79,13 +83,16 @@ if __name__ == "__main__":
                 if share_multi_tree is None and manifold_fitness:
                     raise ValueError("the GP representation is not multi-tree and the fitness function is manifold function!")
 
+                if share_multi_tree is not False and stacked_gp:
+                    raise ValueError("we want to to use non-shared multi-tree with stacked GP (stacked GP is already shared)")
+
                 for num_latent_dimensions in [2]:
 
                     manager = multiprocessing.Manager()
                     return_dict = manager.dict()
 
                     p = [multiprocessing.Process(target=low_dim_accuracy, args=(dataset, seed, return_dict, num_latent_dimensions, share_multi_tree,
-                                                                                use_phi, manifold_fitness))
+                                                                                use_phi, manifold_fitness, stacked_gp, num_of_layers))
                                                                                 for seed in range(num_of_runs)]
                     for proc in p:
                         proc.start()
