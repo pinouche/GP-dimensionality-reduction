@@ -74,51 +74,64 @@ if __name__ == "__main__":
 
     manifold_fitness = False
     stacked_gp = True
-    num_of_layers = 2
+    num_of_layers = 1
 
     for dataset in ["observatory"]:
         for use_phi in [False]:
-            for share_multi_tree in [False]:  # True: shared, multi-tree; False: non-shared, multi-tree; None: vanilla GP (non-shared, not multi-tree)
-
-                if share_multi_tree is None and manifold_fitness:
-                    raise ValueError("the GP representation is not multi-tree and the fitness function is manifold function!")
-
-                if share_multi_tree is not False and stacked_gp:
-                    raise ValueError("we want to to use non-shared multi-tree with stacked GP (stacked GP is already shared)")
-
-                for num_latent_dimensions in [2]:
-
-                    manager = multiprocessing.Manager()
-                    return_dict = manager.dict()
-
-                    p = [multiprocessing.Process(target=low_dim_accuracy, args=(dataset, seed, return_dict, num_latent_dimensions, share_multi_tree,
-                                                                                use_phi, manifold_fitness, stacked_gp, num_of_layers))
-                                                                                for seed in range(num_of_runs)]
-                    for proc in p:
-                        proc.start()
-                    for proc in p:
-                        proc.join()
-
-                    results = return_dict.values()
-
-                    path = "gecco/" + dataset + "/"
-
-                    os.makedirs(path, exist_ok=True)
-                    file_name = path + "results_" + dataset + "_" + str(num_latent_dimensions)
-
-                    if share_multi_tree:
-                        file_name = file_name + "_shared"
-                    elif not share_multi_tree:
-                        file_name = file_name + "_not_shared"
-                    elif share_multi_tree is None:
-                        file_name = file_name + "_vanilla"
-
-                    if manifold_fitness:
-                        file_name = file_name + "_manifold_fitness"
-
-                    if use_phi:
-                        file_name = file_name + "_phi"
+            for stacked_gp in [False, True]:
+                for manifold_fitness in [False, True]:
+                    if stacked_gp:
+                        list_gp_method = [False]  # we only want multi-tree non-shared
+                    elif manifold_fitness and not stacked_gp:
+                        list_gp_method = [False, True]
                     else:
-                        file_name = file_name + "_len"
+                        list_gp_method = [False, True, None]
 
-                    pickle.dump(results, open(file_name + ".p", "wb"))
+                    for gp_method in list_gp_method:  # True: shared, multi-tree; False: non-shared, multi-tree; None: vanilla GP (non-shared, not multi-tree)
+    
+                        if gp_method is None and manifold_fitness:
+                            raise ValueError("the GP representation is not multi-tree and the fitness function is manifold function!")
+
+                        if gp_method is not False and stacked_gp:
+                            raise ValueError("we want to to use non-shared multi-tree with stacked GP (stacked GP is already shared)")
+                    
+
+                        for num_latent_dimensions in [2]:
+
+                            manager = multiprocessing.Manager()
+                            return_dict = manager.dict()
+
+                            p = [multiprocessing.Process(target=low_dim_accuracy, args=(dataset, seed, return_dict, num_latent_dimensions, gp_method,
+                                                                                    use_phi, manifold_fitness, stacked_gp, num_of_layers))
+                                                                                    for seed in range(num_of_runs)]
+                            for proc in p:
+                                proc.start()
+                            for proc in p:
+                                proc.join()
+
+                            results = return_dict.values()
+
+                            path = "gecco/" + dataset + "/"
+
+                            os.makedirs(path, exist_ok=True)
+                            file_name = path + "results_" + dataset + "_" + str(num_latent_dimensions)
+
+                            if gp_method:
+                                file_name = file_name + "_shared"
+                            elif not gp_method:
+                                file_name = file_name + "_not_shared"
+                            elif gp_method is None:
+                                file_name = file_name + "_vanilla"
+
+                            if stacked_gp:
+                                file_name = file_name + "_stacked"
+
+                            if manifold_fitness:
+                                file_name = file_name + "_manifold_fitness"
+
+                            if use_phi:
+                                file_name = file_name + "_phi"
+                            else:
+                                file_name = file_name + "_len"
+
+                            pickle.dump(results, open(file_name + ".p", "wb"))
