@@ -71,15 +71,13 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_m
 if __name__ == "__main__":
 
     num_of_runs = 1
-
-    manifold_fitness = False
-    stacked_gp = True
     num_of_layers = 1
 
     for dataset in ["observatory"]:
         for use_phi in [False]:
             for stacked_gp in [False, True]:
                 for manifold_fitness in [False, True]:
+
                     if stacked_gp:
                         list_gp_method = [False]  # we only want multi-tree non-shared
                     elif manifold_fitness and not stacked_gp:
@@ -94,7 +92,6 @@ if __name__ == "__main__":
 
                         if gp_method is not False and stacked_gp:
                             raise ValueError("we want to to use non-shared multi-tree with stacked GP (stacked GP is already shared)")
-                    
 
                         for num_latent_dimensions in [2]:
 
