@@ -1,1 +1,1 @@
-multi-objective genetic programming surrogate for unsupervised learning
+multi-objective genetic programming for interpretable dimensionality reduction
