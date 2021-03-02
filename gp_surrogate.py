@@ -176,7 +176,7 @@ def get_building_blocks(data_x, low_dim_x, test_data_x, num_blocks, use_interpre
         use_linear_scaling = True
 
     estimator = NSGP(pop_size=1000, max_generations=100, verbose=True, max_tree_size=5*(num_blocks+1),
-                     crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=1,
+                     crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
                      initialization_max_tree_height=3, tournament_size=2, use_linear_scaling=use_linear_scaling,
                      use_erc=False, use_interpretability_model=use_interpretability_model,
                      functions=[AddNode(), SubNode(), MulNode(), DivNode()],
