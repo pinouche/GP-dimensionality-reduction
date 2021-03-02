@@ -115,7 +115,7 @@ if __name__ == "__main__":
 
                             if gp_method:
                                 file_name = file_name + "_shared"
-                            elif not gp_method:
+                            elif gp_method is False:
                                 file_name = file_name + "_not_shared"
                             elif gp_method is None:
                                 file_name = file_name + "_vanilla"
