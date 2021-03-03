@@ -70,7 +70,7 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_m
 
 if __name__ == "__main__":
 
-    num_of_runs = 1
+    num_of_runs = 10
     num_of_layers = 1
 
     for dataset in ["observatory"]:
