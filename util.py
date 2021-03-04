@@ -78,7 +78,7 @@ def train_base_model(x_data, seed, low_dim=2):
     x_data = scaler.transform(x_data)
 
     est = nn_autoencoder(seed, x_data.shape[1], low_dim)
-    est.fit(x_data, x_data, batch_size=16, epochs=200, verbose=0)
+    est.fit(x_data, x_data, batch_size=32, epochs=200, verbose=0)
 
     return est
 

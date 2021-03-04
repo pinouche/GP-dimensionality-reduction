@@ -27,7 +27,7 @@ class pyNSGPEstimator(BaseEstimator, RegressorMixin):
                  max_tree_size=100,
                  use_linear_scaling=True,
                  use_interpretability_model=False,
-                 use_manifold_fitness=False,
+                 fitness="autoencoder_teacher",
                  verbose=False,
                  use_multi_tree=False,
                  num_sub_functions=4
@@ -44,7 +44,7 @@ class pyNSGPEstimator(BaseEstimator, RegressorMixin):
         self.y_ = y
 
         fitness_function = SymbolicRegressionFitness(X, y, self.use_linear_scaling, use_interpretability_model=self.use_interpretability_model,
-                                                     use_manifold_fitness=self.use_manifold_fitness)
+                                                     fitness=self.fitness)
 
         terminals = []
         if self.use_erc:

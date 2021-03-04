@@ -2,6 +2,7 @@ import numpy as np
 from copy import deepcopy
 import random
 from scipy.spatial.distance import pdist
+import keras
 
 from pynsgp.Nodes.SymbolicRegressionNodes import FeatureNode
 from pynsgp.Nodes.MultiTreeRepresentation import MultiTreeIndividual
@@ -9,12 +10,13 @@ from pynsgp.Nodes.MultiTreeRepresentation import MultiTreeIndividual
 
 class SymbolicRegressionFitness:
 
-    def __init__(self, X_train, y_train, use_linear_scaling=True, use_interpretability_model=False, use_manifold_fitness=False):
+    def __init__(self, X_train, y_train, use_linear_scaling=True, use_interpretability_model=False, fitness="autoencoder_teacher_fitness"):
+
         self.X_train = X_train
         self.y_train = y_train
         self.use_linear_scaling = use_linear_scaling
         self.use_interpretability_model = use_interpretability_model
-        self.use_manifold_fitness = use_manifold_fitness
+        self.fitness = fitness
         self.elite = None
         self.evaluations = 0
 
@@ -23,9 +25,11 @@ class SymbolicRegressionFitness:
         self.evaluations = self.evaluations + 1
         individual.objectives = []
 
-        if self.use_manifold_fitness:
+        if self.fitness == "manifold_fitness":
             obj1 = self.stress_cost(individual, 64)
-        else:
+        elif self.fitness == "neural_decoder_fitness":
+            obj1 = self.neural_decoder_fitness(individual, self.evaluations)
+        elif self.fitness == "autoencoder_teacher_fitness":
             obj1 = self.EvaluateMeanSquaredError(individual)
 
         individual.objectives.append(obj1)
@@ -111,6 +115,35 @@ class SymbolicRegressionFitness:
         cost = np.sum(np.abs(similarity_matrix_batch - similarity_matrix_pred))
 
         return cost
+
+    # fitness function that trains a decoder to use as the fitness
+    def neural_decoder_fitness(self, individual, seed):
+
+        output = individual.GetOutput(self.X_train)
+
+        input_size = self.X_train.shape[1]
+        latent_size = output.shape[1]
+        initializer = keras.initializers.glorot_normal(seed=seed)
+
+        model = keras.models.Sequential([
+
+            # latent_layer
+            keras.layers.Dense(int((input_size + latent_size) / 2), activation="elu", use_bias=True,
+                               trainable=True, kernel_initializer=initializer, input_shape=(latent_size,)),
+
+            keras.layers.Dense(input_size, activation=keras.activations.linear, use_bias=False,
+                               trainable=True, kernel_initializer=initializer)
+        ])
+
+        adam = keras.optimizers.SGD(lr=0.001)
+        model.compile(optimizer=adam, loss='mse', metrics=['mse'])
+
+        model_info = model.fit(output, self.X_train, batch_size=32, epochs=100, verbose=False)
+
+        argmin = np.argmin(model_info.history["loss"])
+        loss = np.mean(model_info.history["loss"][argmin-1:argmin+1])
+
+        return loss
 
     def EvaluateMeanSquaredError(self, individual):
         if isinstance(individual, MultiTreeIndividual):

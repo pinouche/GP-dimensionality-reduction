@@ -8,7 +8,7 @@ from util import match_trees
 
 
 def multi_tree_gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, share_multi_tree, use_interpretability_model=False,
-                                  use_manifold_fitness=False, stacked_gp=False, num_of_layers=1):
+                                  fitness="autoencoder_teacher_fitness", stacked_gp=False, num_of_layers=1):
 
     scaler = StandardScaler()
     scaler = scaler.fit(data_x)
@@ -20,7 +20,7 @@ def multi_tree_gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, s
         for layer in range(num_of_layers):
             print("COMPUTING FOR LAYER: " + str(layer))
             building_blocks_train, building_blocks_test = get_building_blocks(data_x, low_dim_x, test_data_x, num_of_blocks,
-                                                                              use_interpretability_model, use_manifold_fitness)
+                                                                              use_interpretability_model, fitness)
             print(building_blocks_train.shape, building_blocks_test.shape)
 
             if len(building_blocks_train.shape) == 3:
@@ -43,10 +43,10 @@ def multi_tree_gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, s
         init_max_tree_height = 7
         num_sub_functions = 0
 
-    if use_manifold_fitness:
-        use_linear_scaling = False
-    else:
+    if fitness == "autoencoder_teacher_fitness":
         use_linear_scaling = True
+    else:
+        use_linear_scaling = False
 
     estimator = NSGP(pop_size=1000, max_generations=2, verbose=True, max_tree_size=100,
                      crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
@@ -54,7 +54,7 @@ def multi_tree_gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, s
                      use_erc=False, use_interpretability_model=use_interpretability_model,
                      functions=[AddNode(), SubNode(), MulNode(), DivNode()],
                      use_multi_tree=True,
-                     use_manifold_fitness=use_manifold_fitness,
+                     fitness=fitness,
                      num_sub_functions=num_sub_functions)
 
     estimator.fit(data_x, low_dim_x)
@@ -134,7 +134,7 @@ def gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, use_in
                          initialization_max_tree_height=7, tournament_size=2, use_linear_scaling=True,
                          use_erc=False, use_interpretability_model=use_interpretability_model,
                          functions=[AddNode(), SubNode(), MulNode(), DivNode()],
-                         use_manifold_fitness=False,
+                         fitness="autoencoder_teacher_fitness",
                          use_multi_tree=False)
 
         estimator.fit(data_x, low_dim_x[:, index])
@@ -173,14 +173,14 @@ def gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, use_in
     return accuracy_list, np.transpose(len_programs), np.transpose(individuals)
 
 
-def get_building_blocks(data_x, low_dim_x, test_data_x, num_blocks, use_interpretability_model=False, use_manifold_fitness=False):
+def get_building_blocks(data_x, low_dim_x, test_data_x, num_blocks, use_interpretability_model=False, fitness="autoencoder_teacher_fitness"):
 
     num_sub_functions = 0
 
-    if use_manifold_fitness:
-        use_linear_scaling = False
-    else:
+    if fitness == "autoencoder_teacher_fitness":
         use_linear_scaling = True
+    else:
+        use_linear_scaling = False
 
     estimator = NSGP(pop_size=1000, max_generations=2, verbose=True, max_tree_size=5*(num_blocks+1),
                      crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
@@ -188,7 +188,7 @@ def get_building_blocks(data_x, low_dim_x, test_data_x, num_blocks, use_interpre
                      use_erc=False, use_interpretability_model=use_interpretability_model,
                      functions=[AddNode(), SubNode(), MulNode(), DivNode()],
                      use_multi_tree=True,
-                     use_manifold_fitness=use_manifold_fitness,
+                     fitness=fitness,
                      num_sub_functions=num_sub_functions)
 
     estimator.fit(data_x, low_dim_x)
