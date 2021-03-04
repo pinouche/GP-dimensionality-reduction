@@ -21,8 +21,6 @@ def multi_tree_gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, s
             print("COMPUTING FOR LAYER: " + str(layer))
             building_blocks_train, building_blocks_test = get_building_blocks(data_x, low_dim_x, test_data_x, num_of_blocks,
                                                                               use_interpretability_model, use_manifold_fitness)
-            print(building_blocks_train.shape, building_blocks_test.shape)
-
             if len(building_blocks_train.shape) == 3:
                 for index in range(building_blocks_train.shape[0]):
                     data_x = np.hstack((data_x, building_blocks_train[index]))
@@ -32,13 +30,17 @@ def multi_tree_gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, s
                 data_x = np.hstack((data_x, building_blocks_train))
                 test_data_x = np.hstack((test_data_x, building_blocks_test))
                 num_of_blocks += 2
-
+            
+            print(data_x.shape, test_data_x.shape)
             print("the number of blocks is: " + str(num_of_blocks))
 
     # Prepare NSGP settings
     if share_multi_tree:
         init_max_tree_height = 3
         num_sub_functions = np.sqrt(data_x.shape[1])+1
+    elif stacked_gp:
+        init_max_tree_height = 4
+        num_sub_functions = 0
     else:
         init_max_tree_height = 7
         num_sub_functions = 0
@@ -182,7 +184,7 @@ def get_building_blocks(data_x, low_dim_x, test_data_x, num_blocks, use_interpre
     else:
         use_linear_scaling = True
 
-    estimator = NSGP(pop_size=1000, max_generations=100, verbose=True, max_tree_size=5*(num_blocks+1),
+    estimator = NSGP(pop_size=1000, max_generations=100, verbose=True, max_tree_size=10*(num_blocks+1),
                      crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
                      initialization_max_tree_height=3, tournament_size=2, use_linear_scaling=use_linear_scaling,
                      use_erc=False, use_interpretability_model=use_interpretability_model,
