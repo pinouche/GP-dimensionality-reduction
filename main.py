@@ -70,14 +70,14 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_m
 
 if __name__ == "__main__":
 
-    num_of_runs = 10
+    num_of_runs = 30
     num_of_layers = 1
 
-    fitness_list = ["manifold_fitness", "neural_decoder_fitness", "autoencoder_teacher_fitness"]
+    fitness_list = ["manifold_fitness", "autoencoder_teacher_fitness"]
 
     for dataset in ["observatory"]:
         for use_phi in [False]:
-            for stacked_gp in [False, True]:
+            for stacked_gp in [True]:
                 for fitness in fitness_list:
 
                     if stacked_gp:
@@ -98,7 +98,7 @@ if __name__ == "__main__":
                         if gp_method is not False and stacked_gp:
                             raise ValueError("we want to to use non-shared multi-tree with stacked GP (stacked GP is already shared)")
 
-                        for num_latent_dimensions in [2]:
+                        for num_latent_dimensions in [1, 2, 3]:
 
                             manager = multiprocessing.Manager()
                             return_dict = manager.dict()
