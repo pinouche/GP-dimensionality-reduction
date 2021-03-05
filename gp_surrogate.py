@@ -14,15 +14,11 @@ def multi_tree_gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, s
     scaler = scaler.fit(data_x)
     data_x = scaler.transform(data_x)
     test_data_x = scaler.transform(test_data_x)
-    number_dim = low_dim_x.shape[1]
-    
 
     if stacked_gp:
-        num_of_blocks = 0
         for layer in range(num_of_layers):
             print("COMPUTING FOR LAYER: " + str(layer))
-            building_blocks_train, building_blocks_test = get_building_blocks(data_x, low_dim_x, test_data_x, num_of_blocks,
-                                                                              use_interpretability_model, fitness)
+            building_blocks_train, building_blocks_test = get_building_blocks(data_x, low_dim_x, test_data_x, use_interpretability_model, fitness)
 
             for index in range(building_blocks_train.shape[0]):
                 data_x = np.hstack((data_x, building_blocks_train[index]))
@@ -171,7 +167,7 @@ def gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, use_in
     return accuracy_list, np.transpose(len_programs), np.transpose(individuals)
 
 
-def get_building_blocks(data_x, low_dim_x, test_data_x, num_blocks, use_interpretability_model=False, fitness="autoencoder_teacher_fitness"):
+def get_building_blocks(data_x, low_dim_x, test_data_x, use_interpretability_model=False, fitness="autoencoder_teacher_fitness"):
 
     num_sub_functions = 0
 
