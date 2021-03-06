@@ -31,7 +31,7 @@ def multi_tree_gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, s
         init_max_tree_height = 3
         num_sub_functions = np.sqrt(data_x.shape[1])+1
     elif stacked_gp:
-        init_max_tree_height = 4
+        init_max_tree_height = 3
         num_sub_functions = 0
     else:
         init_max_tree_height = 7
