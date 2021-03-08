@@ -75,7 +75,7 @@ if __name__ == "__main__":
 
     fitness_list = ["manifold_fitness", "autoencoder_teacher_fitness"]
 
-    for dataset in ["segmentation"]:
+    for dataset in ["credit"]:
         for use_phi in [False]:
             for stacked_gp in [False, True]:
                 for fitness in fitness_list:
