@@ -29,7 +29,7 @@ class SymbolicRegressionFitness:
             obj1 = self.stress_cost(individual, 64)
         elif self.fitness == "neural_decoder_fitness":
             obj1 = self.neural_decoder_fitness(individual, self.evaluations)
-        elif self.fitness == "autoencoder_teacher_fitness":
+        elif self.fitness == "autoencoder_teacher_fitness" or self.fitness == "gp_autoencoder":
             obj1 = self.EvaluateMeanSquaredError(individual)
 
         individual.objectives.append(obj1)
@@ -56,19 +56,10 @@ class SymbolicRegressionFitness:
         scaled_output = a + b * output
         fit_error = np.mean(np.square(self.y_train - scaled_output))
 
-        '''
-                if str(individual.GetSubtree()) == '[x12]':
-                        print(output, a, b, fit_error)
-                        print(self.y_train)
-                '''
-
         return fit_error
 
     def __EvaluateMeanSquaredErrorOfMultiTree(self, individual):
-        # quick check that we're not drunk
-        assert (self.y_train.shape[1] == individual.num_sup_functions)
         # compute multi-output, starting from sub_functions
-
         output = individual.GetOutput(self.X_train)
         fit_errors = list()
         for i in range(individual.num_sup_functions):
@@ -83,23 +74,14 @@ class SymbolicRegressionFitness:
 
             scaled_output = a + b * output[:, i]
             fit_error = np.mean(np.square(self.y_train[:, i] - scaled_output))
-
-            '''
-                        if str(individual.sup_functions[i].GetSubtree()) == '[x0]' and str(individual.sub_functions[0].GetSubtree()) == '[x12]':
-                                print(output, a, b, fit_error)
-                                print(self.y_train[:,i])
-                                quit()
-                        '''
             fit_errors.append(fit_error)
-        # now IDK if you want mean or max, I go for mean here
+
         fit_error = np.mean(fit_errors)
         return fit_error
 
     # fitness function to directly evolve trees to do dimensionality reduction
     def stress_cost(self, individual, batch_size=64):
 
-        # quick checks that we're not drunk
-        assert (self.y_train.shape[1] == individual.num_sup_functions)
         assert batch_size <= self.X_train.shape[0]
 
         random.seed(self.evaluations)
