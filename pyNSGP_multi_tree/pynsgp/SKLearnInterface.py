@@ -27,7 +27,7 @@ class pyNSGPEstimator(BaseEstimator, RegressorMixin):
                  max_tree_size=100,
                  use_linear_scaling=True,
                  use_interpretability_model=False,
-                 fitness="autoencoder_teacher",
+                 fitness="autoencoder_teacher_fitness",
                  verbose=False,
                  use_multi_tree=False,
                  num_sub_functions=4

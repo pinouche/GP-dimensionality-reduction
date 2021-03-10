@@ -29,7 +29,7 @@ class SymbolicRegressionFitness:
             obj1 = self.stress_cost(individual, 64)
         elif self.fitness == "neural_decoder_fitness":
             obj1 = self.neural_decoder_fitness(individual, self.evaluations)
-        elif self.fitness == "autoencoder_teacher_fitness" or self.fitness == "gp_autoencoder":
+        elif self.fitness == "autoencoder_teacher_fitness" or self.fitness == "gp_autoencoder_fitness":
             obj1 = self.EvaluateMeanSquaredError(individual)
 
         individual.objectives.append(obj1)
@@ -125,6 +125,9 @@ class SymbolicRegressionFitness:
         argmin = np.argmin(model_info.history["loss"])
         loss = np.mean(model_info.history["loss"][argmin-1:argmin+1])
 
+        if seed % 10 == 0:
+            print(seed, loss)
+
         return loss
 
     def EvaluateMeanSquaredError(self, individual):
@@ -143,14 +146,17 @@ class SymbolicRegressionFitness:
         if isinstance(individual, MultiTreeIndividual):
             # precompute lengths of subfunctions
             len_subfunctions = [len(x.GetSubtree()) for x in individual.sub_functions]
-            for sup_function in individual.sup_functions:
-                for node in sup_function.GetSubtree():
-                    if isinstance(node, FeatureNode) and individual.num_sub_functions > 0:
-                        # fetch length of sub-function
-                        l += len_subfunctions[node.id]
-                    else:
-                        # count one
-                        l += 1
+            if self.fitness == "gp_autoencoder_fitness":
+                l = np.sum(len_subfunctions)
+            else:
+                for sup_function in individual.sup_functions:
+                    for node in sup_function.GetSubtree():
+                        if isinstance(node, FeatureNode) and individual.num_sub_functions > 0:
+                            # fetch length of sub-function
+                            l += len_subfunctions[node.id]
+                        else:
+                            # count one
+                            l += 1
         else:
             l = len(individual.GetSubtree())
         return l

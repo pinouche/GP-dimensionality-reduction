@@ -73,25 +73,26 @@ if __name__ == "__main__":
     num_of_runs = 1
     num_of_layers = 1
 
-    # fitness_list = ["manifold_fitness", "autoencoder_teacher_fitness", "neural_decoder_fitness", "gp_autoencoder"]
-    fitness_list = ["gp_autoencoder"]
+    # fitness_list = ["manifold_fitness", "autoencoder_teacher_fitness", "neural_decoder_fitness", "gp_autoencoder_fitness"]
+    fitness_list = ["gp_autoencoder_fitness"]
 
-    for dataset in ["winequality"]:
+    for dataset in ["segmentation"]:
         for use_phi in [False]:
-            for stacked_gp in [False, True]:
+            for stacked_gp in [False]:
                 for fitness in fitness_list:
 
                     # specify the allowed combination of methods
-                    if stacked_gp and fitness != "gp_autoencoder":
+                    if stacked_gp and fitness != "gp_autoencoder_fitness":
                         list_gp_method = [False]  # we only want multi-tree non-shared
-                    elif stacked_gp and fitness == "gp_autoencoder":
+                    elif stacked_gp and fitness == "gp_autoencoder_fitness":
                         list_gp_method = []  # we do not want to compute for stacked gp and gp_autoencoder fitness (empty list)
-                    elif not stacked_gp and fitness == "gp_autoencoder":
+                    elif not stacked_gp and fitness == "gp_autoencoder_fitness":
                         list_gp_method = [True]  # for gp-autoencoder fitness, we want to use the shared multi-tree GP representation
                     elif not stacked_gp and fitness == "autoencoder_teacher_fitness":  # we only want vanilla GP when using teacher model
                         list_gp_method = [False, True, None]
                     else:
-                        list_gp_method = [False, True]
+                        #list_gp_method = [False, True]
+                        list_gp_method = [False]
 
                     if list_gp_method:
 
@@ -105,7 +106,7 @@ if __name__ == "__main__":
                             if gp_method is not False and stacked_gp:
                                 raise ValueError("we want to to use non-shared multi-tree with stacked GP (stacked GP is already shared)")
 
-                            for num_latent_dimensions in [2, 3]:
+                            for num_latent_dimensions in [2]:
 
                                 manager = multiprocessing.Manager()
                                 return_dict = manager.dict()
