@@ -74,7 +74,7 @@ if __name__ == "__main__":
     num_of_layers = 1
 
     # fitness_list = ["manifold_fitness", "autoencoder_teacher_fitness", "neural_decoder_fitness", "gp_autoencoder_fitness"]
-    fitness_list = ["gp_autoencoder_fitness"]
+    fitness_list = ["neural_decoder_fitness"]
 
     for dataset in ["segmentation"]:
         for use_phi in [False]:
@@ -91,8 +91,7 @@ if __name__ == "__main__":
                     elif not stacked_gp and fitness == "autoencoder_teacher_fitness":  # we only want vanilla GP when using teacher model
                         list_gp_method = [False, True, None]
                     else:
-                        #list_gp_method = [False, True]
-                        list_gp_method = [False]
+                        list_gp_method = [False, True]
 
                     if list_gp_method:
 
