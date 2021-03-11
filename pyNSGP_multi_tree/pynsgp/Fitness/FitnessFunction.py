@@ -3,6 +3,7 @@ from copy import deepcopy
 import random
 from scipy.spatial.distance import pdist
 import keras
+from sklearn.preprocessing import StandardScaler
 
 from pynsgp.Nodes.SymbolicRegressionNodes import FeatureNode
 from pynsgp.Nodes.MultiTreeRepresentation import MultiTreeIndividual
@@ -103,6 +104,9 @@ class SymbolicRegressionFitness:
 
         output = individual.GetOutput(self.X_train)
 
+        scaler = StandardScaler()
+        output = scaler.fit_transform(output)
+
         input_size = self.X_train.shape[1]
         latent_size = output.shape[1]
         initializer = keras.initializers.glorot_normal(seed=seed)
@@ -117,16 +121,21 @@ class SymbolicRegressionFitness:
                                trainable=True, kernel_initializer=initializer)
         ])
 
-        adam = keras.optimizers.SGD(lr=0.001)
+        adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False)
         model.compile(optimizer=adam, loss='mse', metrics=['mse'])
 
-        model_info = model.fit(output, self.X_train, batch_size=32, epochs=100, verbose=False)
+        model_info = model.fit(output, self.X_train, batch_size=32, epochs=200, verbose=False)
 
         argmin = np.argmin(model_info.history["loss"])
         loss = np.mean(model_info.history["loss"][argmin-1:argmin+1])
 
-        if seed % 10 == 0:
-            print(seed, loss)
+        keras.backend.clear_session()
+
+        if loss == np.nan:
+            print("TRUE")
+            loss = np.inf
+
+        print(argmin, seed, loss)
 
         return loss
 

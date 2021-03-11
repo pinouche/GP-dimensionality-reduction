@@ -11,7 +11,7 @@ def multi_tree_gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, s
                                   fitness="autoencoder_teacher_fitness", stacked_gp=False, num_of_layers=1):
 
     scaler = StandardScaler()
-    scaler = scaler.fit(data_x)
+    scaler.fit(data_x)
     data_x = scaler.transform(data_x)
     test_data_x = scaler.transform(test_data_x)
 
@@ -124,7 +124,7 @@ def multi_tree_gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, s
 def gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, use_interpretability_model=False):
 
     scaler = StandardScaler()
-    scaler = scaler.fit(data_x)
+    scaler.fit(data_x)
     data_x = scaler.transform(data_x)
     test_data_x = scaler.transform(test_data_x)
 

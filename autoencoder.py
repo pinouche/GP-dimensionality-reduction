@@ -5,7 +5,7 @@ from sklearn.preprocessing import StandardScaler
 def get_hidden_layers(model, data_x):
 
     scaler = StandardScaler()
-    scaler = scaler.fit(data_x)
+    scaler.fit(data_x)
     data_x = scaler.transform(data_x)
 
     def keras_function_layer(model_layer, data):
