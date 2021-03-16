@@ -12,6 +12,10 @@ from pynsgp.Evolution.Evolution import pyNSGP
 class pyNSGPEstimator(BaseEstimator, RegressorMixin):
 
     def __init__(self,
+                 x_train,
+                 y_train,
+                 x_test,
+                 y_test,
                  pop_size=100,
                  max_generations=100,
                  max_evaluations=-1,
@@ -40,9 +44,6 @@ class pyNSGPEstimator(BaseEstimator, RegressorMixin):
 
     def fit(self, X, y):
 
-        self.X_ = X
-        self.y_ = y
-
         fitness_function = SymbolicRegressionFitness(X, y, self.use_linear_scaling, use_interpretability_model=self.use_interpretability_model,
                                                      fitness=self.fitness)
 
@@ -58,7 +59,12 @@ class pyNSGPEstimator(BaseEstimator, RegressorMixin):
             self.num_sup_functions = y.shape[1]
 
         nsgp = pyNSGP(fitness_function,
-                      self.functions, terminals,
+                      self.functions,
+                      terminals,
+                      self.x_train,
+                      self.y_train,
+                      self.x_test,
+                      self.y_test,
                       pop_size=self.pop_size,
                       max_generations=self.max_generations,
                       max_time=self.max_time,
@@ -73,7 +79,8 @@ class pyNSGPEstimator(BaseEstimator, RegressorMixin):
                       use_multi_tree=self.use_multi_tree,
                       num_sub_functions=self.num_sub_functions,
                       num_sup_functions=self.num_sup_functions,
-                      verbose=self.verbose)
+                      verbose=self.verbose
+                      )
 
         nsgp.Run()
         self.nsgp_ = nsgp
@@ -123,6 +130,10 @@ class pyNSGPEstimator(BaseEstimator, RegressorMixin):
     def get_front(self):
         check_is_fitted(self, ['nsgp_'])
         return self.nsgp_.latest_front
+
+    def get_list_info(self):
+        check_is_fitted(self, ['nsgp_'])
+        return self.nsgp_.info_generations
 
     def get_population(self):
         check_is_fitted(self, ['nsgp_'])

@@ -11,7 +11,8 @@ from pynsgp.Nodes.MultiTreeRepresentation import MultiTreeIndividual
 
 class SymbolicRegressionFitness:
 
-    def __init__(self, X_train, y_train, use_linear_scaling=True, use_interpretability_model=False, fitness="autoencoder_teacher_fitness"):
+    def __init__(self, X_train, y_train, use_linear_scaling=True, use_interpretability_model=False,
+                 fitness="autoencoder_teacher_fitness"):
 
         self.X_train = X_train
         self.y_train = y_train
@@ -134,8 +135,6 @@ class SymbolicRegressionFitness:
         if loss == np.nan:
             print("TRUE")
             loss = np.inf
-
-        print(argmin, seed, loss)
 
         return loss
 

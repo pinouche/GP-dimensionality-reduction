@@ -4,32 +4,32 @@ from pynsgp.SKLearnInterface import pyNSGPEstimator as NSGP
 from sklearn.preprocessing import StandardScaler
 
 from util import k_fold_valifation_accuracy_rf
-from util import match_trees
 
 
-def multi_tree_gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, share_multi_tree, use_interpretability_model=False,
+def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, share_multi_tree, use_interpretability_model=False,
                                   fitness="autoencoder_teacher_fitness", stacked_gp=False, num_of_layers=1):
 
     scaler = StandardScaler()
-    scaler.fit(data_x)
-    data_x = scaler.transform(data_x)
+    scaler.fit(train_data_x)
+    train_data_x = scaler.transform(train_data_x)
     test_data_x = scaler.transform(test_data_x)
 
     if stacked_gp:
         for layer in range(num_of_layers):
             print("COMPUTING FOR LAYER: " + str(layer))
-            building_blocks_train, building_blocks_test = get_building_blocks(data_x, low_dim_x, test_data_x, use_interpretability_model, fitness)
+            building_blocks_train, building_blocks_test = get_building_blocks(train_data_x, low_dim_x, test_data_x, use_interpretability_model,
+                                                                              fitness)
 
             for index in range(building_blocks_train.shape[0]):
-                data_x = np.hstack((data_x, building_blocks_train[index]))
+                train_data_x = np.hstack((train_data_x, building_blocks_train[index]))
                 test_data_x = np.hstack((test_data_x, building_blocks_test[index]))
                 
-            print(data_x.shape, building_blocks_train.shape)
+            print(train_data_x.shape, building_blocks_train.shape)
 
     # Prepare NSGP settings
     if share_multi_tree and fitness != "gp_autoencoder_fitness":
         init_max_tree_height = 3
-        num_sub_functions = np.sqrt(data_x.shape[1])+1
+        num_sub_functions = np.sqrt(train_data_x.shape[1])+1
     elif share_multi_tree and fitness == "gp_autoencoder_fitness":
         init_max_tree_height = 3
         num_sub_functions = low_dim_x.shape[1]
@@ -45,7 +45,8 @@ def multi_tree_gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, s
     else:
         use_linear_scaling = False
 
-    estimator = NSGP(pop_size=100, max_generations=2, verbose=True, max_tree_size=100,
+    estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y,
+                     pop_size=100, max_generations=100, verbose=True, max_tree_size=100,
                      crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
                      initialization_max_tree_height=init_max_tree_height, tournament_size=2, use_linear_scaling=use_linear_scaling,
                      use_erc=False, use_interpretability_model=use_interpretability_model,
@@ -55,90 +56,34 @@ def multi_tree_gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, s
                      num_sub_functions=num_sub_functions)
 
     if fitness != "gp_autoencoder_fitness":
-        estimator.fit(data_x, low_dim_x)
+        estimator.fit(train_data_x, low_dim_x)
     else:
-        estimator.fit(data_x, data_x)
+        estimator.fit(train_data_x, train_data_x)
 
-    front = estimator.nsgp_.latest_front
-    front_non_duplicate = []
-    front_string_format = []
-    for individual in front:
-        if individual.GetHumanExpression() not in front_string_format:
-            front_string_format.append(individual.GetHumanExpression())
-            front_non_duplicate.append(individual)
+    info = estimator.get_list_info()
 
-    low_dim = []
-    individuals = []
-    len_programs = []
-    fitness_list = []
-
-    print("duplicate front length: " + str(len(front)) + " , non-duplicate front length: " + str(len(front_non_duplicate)))
-
-    for individual in front_non_duplicate:
-
-        if fitness != "gp_autoencoder_fitness":
-            output = individual.GetOutput(test_data_x.astype(float))
-            individual_output = np.empty(output.shape)
-            for i in range(individual.num_sup_functions):
-
-                scaled_output = individual.sup_functions[i].ls_a + individual.sup_functions[i].ls_b * output[:, i]
-                individual_output[:, i] = scaled_output
-
-        else:
-            sub_function_outputs = list()
-            for i in range(individual.num_sub_functions):
-                sub_function_output = individual.sub_functions[i].GetOutput(test_data_x.astype(float))
-                sub_function_outputs.append(sub_function_output)
-                individual_output = np.vstack(sub_function_outputs).transpose()
-
-        low_dim.append(individual_output)
-        individuals.append(individual)
-        len_programs.append(individual.objectives[1])
-        fitness_list.append(individual.objectives[0])
-
-    low_dim = np.array(low_dim)
-    len_programs = np.array(len_programs)
-    individuals = np.array(individuals)
-    fitness_list = np.array(fitness_list)
-
-    # get the indices sorted by the first objective
-    indice_array = np.arange(0, len(fitness_list), 1)
-    zipped_list = list(zip(fitness_list, indice_array))
-    zipped_list.sort()
-    indices = [val[1] for val in zipped_list]
-    # reorder
-    low_dim = low_dim[indices]
-    len_programs = len_programs[indices]
-    individuals = individuals[indices]
-
-    accuracy_list = []
-    for index in range(low_dim.shape[0]):
-        x = low_dim[index]
-
-        avg_acc, std_acc = k_fold_valifation_accuracy_rf(x, test_data_y, seed)
-        accuracy_list.append(avg_acc)
-
-    return accuracy_list, len_programs, individuals
+    return info
 
 
-def gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, use_interpretability_model=False):
+def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, seed, use_interpretability_model=False):
 
     scaler = StandardScaler()
-    scaler.fit(data_x)
-    data_x = scaler.transform(data_x)
+    scaler.fit(train_data_x)
+    train_data_x = scaler.transform(train_data_x)
     test_data_x = scaler.transform(test_data_x)
 
-    print("I AM OUT OF THE LOOP")
-
     num_latent_dimensions = low_dim_x.shape[1]
-    low_dim = [[] for _ in range(num_latent_dimensions)]
-    len_programs = [[] for _ in range(num_latent_dimensions)]
-    fitness_programs = [[] for _ in range(num_latent_dimensions)]
+    num_sample_train = train_data_x.shape[0]
+    num_sample_test = test_data_x.shape[0]
+
+    low_dim_train_array = np.empty((10, num_latent_dimensions, num_sample_train))
+    low_dim_test_array = np.empty((10, num_latent_dimensions, num_sample_test))
     individuals = [[] for _ in range(num_latent_dimensions)]
 
     for index in range(num_latent_dimensions):
 
-        estimator = NSGP(pop_size=100, max_generations=10, verbose=True, max_tree_size=100,
+        estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y,
+                         pop_size=100, max_generations=100, verbose=True, max_tree_size=100,
                          crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
                          initialization_max_tree_height=7, tournament_size=2, use_linear_scaling=True,
                          use_erc=False, use_interpretability_model=use_interpretability_model,
@@ -146,40 +91,36 @@ def gp_surrogate_model(data_x, low_dim_x, test_data_x, test_data_y, seed, use_in
                          fitness="autoencoder_teacher_fitness",
                          use_multi_tree=False)
 
-        estimator.fit(data_x, low_dim_x[:, index])
-        front = estimator.nsgp_.latest_front
-        front_non_duplicate = []
-        front_string_format = []
-        for individual in front:
-            if individual.GetHumanExpression() not in front_string_format:
-                front_string_format.append(individual.GetHumanExpression())
-                front_non_duplicate.append(individual)
+        estimator.fit(train_data_x, low_dim_x[:, index])
 
-        print("duplicate front length: " + str(len(front)) + " , non-duplicate front length: " + str(len(front_non_duplicate)))
-        for individual in front_non_duplicate:
-            output = individual.GetOutput(test_data_x)
-            output = individual.ls_a + individual.ls_b * output
+        champions = estimator.get_list_info()
+        individuals[index].append(champions)
 
-            low_dim[index].append(output)
-            len_programs[index].append(individual.objectives[1])
-            fitness_programs[index].append(individual.objectives[0])
-            individuals[index].append(individual)
+        # this is for the champions for each generation
+        low_dim_train = get_single_tree_output(individuals[index][0], train_data_x)
+        low_dim_test = get_single_tree_output(individuals[index][0], test_data_x)
 
-    low_dim = np.array(low_dim)
-    len_programs = np.array(len_programs)
-    individuals = np.array(individuals)
+        low_dim_train_array[:, index, :] = low_dim_train
+        low_dim_test_array[:, index, :] = low_dim_test
 
-    gp_data, len_programs, individuals = match_trees(low_dim, len_programs, fitness_programs, individuals, num_latent_dimensions)
+    individuals = np.squeeze(np.array(individuals))
+    summed_length = np.sum(np.reshape(np.array([ind.objectives[1] for ind in individuals.flatten()]), individuals.shape), axis=0)
 
-    accuracy_list = []
-    for index in range(gp_data.shape[1]):
-        x = gp_data[:, index, :]
-        x = np.transpose(x)
+    # get the information here (accuracy, len, individual) for each generation, similarly to multi_tree_output
 
-        avg_acc, std_acc = k_fold_valifation_accuracy_rf(x, test_data_y, seed)
-        accuracy_list.append(avg_acc)
+    # range(2) is to store information for both train and test
+    info = [[] for _ in range(2)]
+    for index in range(low_dim_train_array.shape[0]):
+        x_train, x_test = low_dim_train_array[index, :, :], low_dim_test_array[index, :, :]
+        x_train, x_test = np.transpose(x_train), np.transpose(x_test)
 
-    return accuracy_list, np.transpose(len_programs), np.transpose(individuals)
+        avg_acc_train, _ = k_fold_valifation_accuracy_rf(x_train, train_data_y, seed)
+        avg_acc_test, _ = k_fold_valifation_accuracy_rf(x_test, test_data_y, seed)
+
+        info[0].append((avg_acc_train, summed_length[index], individuals[:, index]))
+        info[1].append((avg_acc_test, summed_length[index], individuals[:, index]))
+
+    return info
 
 
 def get_building_blocks(data_x, low_dim_x, test_data_x, use_interpretability_model=False, fitness="autoencoder_teacher_fitness"):
@@ -191,7 +132,7 @@ def get_building_blocks(data_x, low_dim_x, test_data_x, use_interpretability_mod
     else:
         use_linear_scaling = False
 
-    estimator = NSGP(pop_size=100, max_generations=10, verbose=True, max_tree_size=100,
+    estimator = NSGP(pop_size=100, max_generations=100, verbose=True, max_tree_size=100,
                      crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
                      initialization_max_tree_height=3, tournament_size=2, use_linear_scaling=use_linear_scaling,
                      use_erc=False, use_interpretability_model=use_interpretability_model,
@@ -202,6 +143,62 @@ def get_building_blocks(data_x, low_dim_x, test_data_x, use_interpretability_mod
 
     estimator.fit(data_x, low_dim_x)
 
+    front_non_duplicate = get_non_duplicate_front(estimator)
+    print("non-duplicate front length: " + str(len(front_non_duplicate)))
+
+    building_blocks_train, _, _, _ = gp_multi_tree_output(front_non_duplicate, data_x)
+    building_blocks_test, _, _, _ = gp_multi_tree_output(front_non_duplicate, test_data_x)
+
+    return building_blocks_train, building_blocks_test
+
+
+def get_single_tree_output(front, x):
+    low_dim = []
+    for individual in front:
+        output = individual.GetOutput(x)
+        output = individual.ls_a + individual.ls_b * output
+
+        low_dim.append(output)
+
+    low_dim = np.array(low_dim)
+
+    return low_dim
+
+
+def gp_multi_tree_output(front, x, fitness):
+
+    low_dim = []
+    individuals = []
+    len_programs = []
+    fitness_list = []
+
+    for individual in front:
+
+        if fitness != "gp_autoencoder_fitness":
+            output = individual.GetOutput(x.astype(float))
+            individual_output = np.empty(output.shape)
+            for i in range(individual.num_sup_functions):
+
+                scaled_output = individual.sup_functions[i].ls_a + individual.sup_functions[i].ls_b * output[:, i]
+                individual_output[:, i] = scaled_output
+
+        else:
+            sub_function_outputs = list()
+            for i in range(individual.num_sub_functions):
+                sub_function_output = individual.sub_functions[i].GetOutput(x.astype(float))
+                sub_function_outputs.append(sub_function_output)
+                individual_output = np.vstack(sub_function_outputs).transpose()
+
+        low_dim.append(individual_output)
+        individuals.append(individual)
+        len_programs.append(individual.objectives[1])
+        fitness_list.append(individual.objectives[0])
+
+    return np.array(low_dim), np.array(individuals), np.array(len_programs), np.array(fitness_list)
+
+
+def get_non_duplicate_front(estimator):
+
     front = estimator.nsgp_.latest_front
     front_non_duplicate = []
     front_string_format = []
@@ -210,24 +207,4 @@ def get_building_blocks(data_x, low_dim_x, test_data_x, use_interpretability_mod
             front_string_format.append(individual.GetHumanExpression())
             front_non_duplicate.append(individual)
 
-    print("duplicate front length: " + str(len(front)) + " , non-duplicate front length: " + str(len(front_non_duplicate)))
-
-    building_blocks_train = gp_multi_tree_output(front_non_duplicate, data_x)
-    building_blocks_test = gp_multi_tree_output(front_non_duplicate, test_data_x)
-
-    return building_blocks_train, building_blocks_test
-
-
-def gp_multi_tree_output(front, x):
-
-    low_dim = []
-    for individual in front:
-        output = individual.GetOutput(x.astype(float))
-        individual_output = np.empty(output.shape)
-        for i in range(individual.num_sup_functions):
-            scaled_output = individual.sup_functions[i].ls_a + individual.sup_functions[i].ls_b * output[:, i]
-            individual_output[:, i] = scaled_output
-
-        low_dim.append(individual_output)
-
-    return np.array(low_dim)
+    return front_non_duplicate

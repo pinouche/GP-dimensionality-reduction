@@ -3,6 +3,11 @@ from numpy.random import random, randint
 import time
 from copy import deepcopy
 
+from sklearn.model_selection import KFold
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import StandardScaler
+
 from pynsgp.Variation import Variation
 from pynsgp.Selection import Selection
 
@@ -18,6 +23,10 @@ class pyNSGP:
 		fitness_function,
 		functions,
 		terminals,
+		x_train,
+		y_train,
+		x_test,
+		y_test,
 		pop_size=500,
 		crossover_rate=0.9,
 		mutation_rate=0.1,
@@ -33,7 +42,11 @@ class pyNSGP:
 		num_sub_functions=4,
 		num_sup_functions=1,
 		verbose=False
-		):
+	):
+		self.x_train = x_train
+		self.y_train = y_train
+		self.x_test = x_test
+		self.y_test = y_test
 
 		self.pop_size = pop_size
 		self.fitness_function = fitness_function
@@ -49,15 +62,15 @@ class pyNSGP:
 
 		self.initialization_max_tree_height = initialization_max_tree_height
 		self.min_depth = min_depth
-		assert(min_depth <= initialization_max_tree_height)	
+		assert (min_depth <= initialization_max_tree_height)
 		self.max_tree_size = max_tree_size
 		self.tournament_size = tournament_size
 
 		self.generations = 0
 
-		self.use_multi_tree=use_multi_tree
-		self.num_sub_functions=num_sub_functions
-		self.num_sup_functions=num_sup_functions
+		self.use_multi_tree = use_multi_tree
+		self.num_sub_functions = num_sub_functions
+		self.num_sup_functions = num_sup_functions
 
 		if self.use_multi_tree:
 			# the terminals of the sup_functions are the sub_functions
@@ -69,34 +82,38 @@ class pyNSGP:
 			if self.num_sub_functions == 0:
 				self.supfun_terminals = self.terminals
 			else:
-			# add ephemeral random constants if they were also in the terminals
+				# add ephemeral random constants if they were also in the terminals
 				for node in self.terminals:
 					if isinstance(node, EphemeralRandomConstantNode):
 						self.supfun_terminals.append(EphemeralRandomConstantNode())
 
 		self.verbose = verbose
 
-
 	def __ShouldTerminate(self):
 		must_terminate = False
 		elapsed_time = time.time() - self.start_time
-		if self.max_evaluations > 0 and self.fitness_function.evaluations >= self.max_evaluations:
+		if 0 < self.max_evaluations <= self.fitness_function.evaluations:
 			must_terminate = True
-		elif self.max_generations > 0 and self.generations >= self.max_generations:
+		elif 0 < self.max_generations <= self.generations:
 			must_terminate = True
-		elif self.max_time > 0 and elapsed_time >= self.max_time:
+		elif 0 < self.max_time <= elapsed_time:
 			must_terminate = True
 
 		if must_terminate and self.verbose:
-			print('Terminating at\n\t', 
-				self.generations, 'generations\n\t', self.fitness_function.evaluations, 'evaluations\n\t', np.round(elapsed_time,2), 'seconds')
+			print('Terminating at\n\t',
+				  self.generations, 'generations\n\t', self.fitness_function.evaluations, 'evaluations\n\t', np.round(elapsed_time, 2), 'seconds')
 
 		return must_terminate
-
 
 	def Run(self):
 
 		self.start_time = time.time()
+
+		# range(2): the first list is for training set and the second list is for test set
+		if self.use_multi_tree:
+			list_info = [[] for _ in range(2)]
+		else:
+			list_info = []
 
 		self.population = []
 
@@ -105,33 +122,35 @@ class pyNSGP:
 		init_depth_interval = self.pop_size / (self.initialization_max_tree_height - 1) / 2
 		next_depth_interval = init_depth_interval
 
-		for i in range( int(self.pop_size/2) ):
+		for i in range(int(self.pop_size / 2)):
 			if i >= next_depth_interval:
 				next_depth_interval += init_depth_interval
 				curr_max_depth += 1
 
 			if self.use_multi_tree:
 				g = MultiTreeIndividual(self.num_sup_functions, self.num_sub_functions)
-				g.InitializeRandom( 
-					self.functions, self.supfun_terminals, 
+				g.InitializeRandom(
+					self.functions, self.supfun_terminals,
 					self.functions, self.terminals,
 					method='grow',
-					max_supfun_height=curr_max_depth, min_supfun_height=self.min_depth, 
+					max_supfun_height=curr_max_depth, min_supfun_height=self.min_depth,
 					max_subfun_height=curr_max_depth, min_subfun_height=self.min_depth,
-					)
+				)
 
 				f = MultiTreeIndividual(self.num_sup_functions, self.num_sub_functions)
-				f.InitializeRandom( 
-					self.functions, self.supfun_terminals, 
+				f.InitializeRandom(
+					self.functions, self.supfun_terminals,
 					self.functions, self.terminals,
 					method='full',
-					max_supfun_height=curr_max_depth, min_supfun_height=self.min_depth, 
+					max_supfun_height=curr_max_depth, min_supfun_height=self.min_depth,
 					max_subfun_height=curr_max_depth, min_subfun_height=self.min_depth,
-					)
+				)
 
 			else:
-				g = Variation.GenerateRandomTree( self.functions, self.terminals, curr_max_depth, curr_height=0, method='grow', min_depth=self.min_depth )
-				f = Variation.GenerateRandomTree( self.functions, self.terminals, curr_max_depth, curr_height=0, method='full', min_depth=self.min_depth )
+				g = Variation.GenerateRandomTree(self.functions, self.terminals, curr_max_depth, curr_height=0, method='grow',
+												 min_depth=self.min_depth)
+				f = Variation.GenerateRandomTree(self.functions, self.terminals, curr_max_depth, curr_height=0, method='full',
+												 min_depth=self.min_depth)
 
 			self.fitness_function.Evaluate(g)
 			self.population.append(g)
@@ -140,11 +159,11 @@ class pyNSGP:
 
 		while not self.__ShouldTerminate():
 
-			selected = Selection.TournamentSelect( self.population, self.pop_size, tournament_size=self.tournament_size )
+			selected = Selection.TournamentSelect(self.population, self.pop_size, tournament_size=self.tournament_size)
 
 			O = []
-			for i in range( self.pop_size ):
-				
+			for i in range(self.pop_size):
+
 				o = deepcopy(selected[i])
 				variation_event_happened = False
 
@@ -153,84 +172,91 @@ class pyNSGP:
 
 					while not variation_event_happened:
 
-						''' 
-						To avoid making too many changes (else they'd lead to random search!)
-						I divide the probability of each event by the number of components that can
-						be changed in a multitree
-						'''
 						tot_num_components = o.num_sub_functions + o.num_sup_functions
 						for i in range(o.num_sub_functions):
 							if random() < self.crossover_rate / tot_num_components:
-								o.sub_functions[i] = Variation.SubtreeCrossover( o.sub_functions[i], selected[ randint( self.pop_size ) ].sub_functions[i] )
+								o.sub_functions[i] = Variation.SubtreeCrossover(o.sub_functions[i], selected[randint(self.pop_size)].sub_functions[i])
 								variation_event_happened = True
 							elif random() < self.mutation_rate / tot_num_components:
-								o.sub_functions[i] = Variation.SubtreeMutation( o.sub_functions[i], self.functions, self.terminals, max_height=self.initialization_max_tree_height )
+								o.sub_functions[i] = Variation.SubtreeMutation(o.sub_functions[i], self.functions, self.terminals,
+																			   max_height=self.initialization_max_tree_height)
 								variation_event_happened = True
 							elif random() < self.op_mutation_rate / tot_num_components:
-								o.sub_functions[i] = Variation.OnePointMutation( o.sub_functions[i], self.functions, self.terminals )
+								o.sub_functions[i] = Variation.OnePointMutation(o.sub_functions[i], self.functions, self.terminals)
 								variation_event_happened = True
 
 							# correct for violation of constraints
 							if (len(o.sub_functions[i].GetSubtree()) > self.max_tree_size) or (o.sub_functions[i].GetHeight() < self.min_depth):
-								o.sub_functions[i] = deepcopy( selected[i].sub_functions[i] )
-							
+								o.sub_functions[i] = deepcopy(selected[i].sub_functions[i])
+
 						for i in range(o.num_sup_functions):
 							if random() < self.crossover_rate / tot_num_components:
-								o.sup_functions[i] = Variation.SubtreeCrossover( o.sup_functions[i], selected[ randint( self.pop_size ) ].sup_functions[i] )
+								o.sup_functions[i] = Variation.SubtreeCrossover(o.sup_functions[i], selected[randint(self.pop_size)].sup_functions[i])
 								variation_event_happened = True
 							elif random() < self.mutation_rate / tot_num_components:
-								o.sup_functions[i] = Variation.SubtreeMutation( o.sup_functions[i], self.functions, self.supfun_terminals, max_height=self.initialization_max_tree_height )
+								o.sup_functions[i] = Variation.SubtreeMutation(o.sup_functions[i], self.functions, self.supfun_terminals,
+																			   max_height=self.initialization_max_tree_height)
 								variation_event_happened = True
 							elif random() < self.op_mutation_rate / tot_num_components:
-								o.sup_functions[i] = Variation.OnePointMutation( o.sup_functions[i], self.functions, self.supfun_terminals )
+								o.sup_functions[i] = Variation.OnePointMutation(o.sup_functions[i], self.functions, self.supfun_terminals)
 								variation_event_happened = True
 
 							# correct for violation of constraints
 							if (self.fitness_function.EvaluateLength(o) > self.max_tree_size) or (o.sup_functions[i].GetHeight() < self.min_depth):
-								o.sup_functions[i] = deepcopy( selected[i].sup_functions[i] )
+								o.sup_functions[i] = deepcopy(selected[i].sup_functions[i])
 					self.fitness_function.Evaluate(o)
 
 				# variation of normal individuals
 				else:
 					while not variation_event_happened:
 						if random() < self.crossover_rate:
-							o = Variation.SubtreeCrossover( o, selected[ randint( self.pop_size ) ] )
+							o = Variation.SubtreeCrossover(o, selected[randint(self.pop_size)])
 							variation_event_happened = True
 						elif random() < self.mutation_rate:
-							o = Variation.SubtreeMutation( o, self.functions, self.terminals, max_height=self.initialization_max_tree_height )
+							o = Variation.SubtreeMutation(o, self.functions, self.terminals, max_height=self.initialization_max_tree_height)
 							variation_event_happened = True
 						elif random() < self.op_mutation_rate:
-							o = Variation.OnePointMutation( o, self.functions, self.terminals )
+							o = Variation.OnePointMutation(o, self.functions, self.terminals)
 							variation_event_happened = True
 
 					if (len(o.GetSubtree()) > self.max_tree_size) or (o.GetHeight() < self.min_depth):
-						o = deepcopy( selected[i] )
+						o = deepcopy(selected[i])
 					else:
 						self.fitness_function.Evaluate(o)
 
 				O.append(o)
 
+			PO = self.population + O
 
-			PO = self.population+O
-			
 			new_population = []
 			fronts = self.FastNonDominatedSorting(PO)
 			self.latest_front = deepcopy(fronts[0])
 
+			# compute information from the champion HERE
+			if self.use_multi_tree:
+				front_non_duplicate = self.get_non_duplicate_front(self.latest_front)
+				accuracy_champ_train, len_champ_train, tree_champ = self.get_information_from_front(front_non_duplicate, self.x_train, self.y_train)
+				accuracy_champ_test, len_champ_test, tree_champ = self.get_information_from_front([tree_champ], self.x_test, self.y_test)
+
+				list_info[0].append((accuracy_champ_train, len_champ_train, tree_champ))
+				list_info[1].append((accuracy_champ_test, len_champ_train, tree_champ))
+			else:
+				list_info.append(self.fitness_function.elite)
+
 			curr_front_idx = 0
 			while curr_front_idx < len(fronts) and len(fronts[curr_front_idx]) + len(new_population) <= self.pop_size:
-				self.ComputeCrowdingDistances( fronts[curr_front_idx] )
+				self.ComputeCrowdingDistances(fronts[curr_front_idx])
 				for p in fronts[curr_front_idx]:
 					new_population.append(p)
 				curr_front_idx += 1
 
 			if len(new_population) < self.pop_size:
 				# fill in remaining
-				self.ComputeCrowdingDistances( fronts[curr_front_idx] )
-				fronts[curr_front_idx].sort(key=lambda x: x.crowding_distance, reverse=True) 
+				self.ComputeCrowdingDistances(fronts[curr_front_idx])
+				fronts[curr_front_idx].sort(key=lambda x: x.crowding_distance, reverse=True)
 
 				while len(fronts[curr_front_idx]) > 0 and len(new_population) < self.pop_size:
-					new_population.append( fronts[curr_front_idx][0])  # pop first because they were sorted in desc order
+					new_population.append(fronts[curr_front_idx][0])  # pop first because they were sorted in desc order
 					fronts[curr_front_idx].pop(0)
 
 				# clean up leftovers
@@ -241,10 +267,11 @@ class pyNSGP:
 			self.generations = self.generations + 1
 
 			if self.verbose:
-				print ('g:',self.generations,'elite obj1:', np.round(self.fitness_function.elite.objectives[0],3), 
-					', obj2:', np.round(self.fitness_function.elite.objectives[1],3))
+				print('g:', self.generations, 'elite obj1:', np.round(self.fitness_function.elite.objectives[0], 3),
+					  ', obj2:', np.round(self.fitness_function.elite.objectives[1], 3))
 				print('elite:', self.fitness_function.elite.GetHumanExpression())
 
+		self.info_generations = list_info
 
 	def FastNonDominatedSorting(self, population):
 		rank_counter = 0
@@ -253,13 +280,13 @@ class pyNSGP:
 		domination_counts = {}
 		current_front = []
 
-		for i in range( len(population) ):
+		for i in range(len(population)):
 			p = population[i]
 
 			dominated_individuals[p] = []
 			domination_counts[p] = 0
 
-			for j in range( len(population) ):
+			for j in range(len(population)):
 				if i == j:
 					continue
 				q = population[j]
@@ -287,7 +314,6 @@ class pyNSGP:
 
 		return nondominated_fronts
 
-
 	def ComputeCrowdingDistances(self, front):
 		number_of_objs = len(front[0].objectives)
 		front_size = len(front)
@@ -312,7 +338,92 @@ class pyNSGP:
 					# if extrema from previous sorting
 					continue
 
-				prev_obj = front[j-1].objectives[i]
-				next_obj = front[j+1].objectives[i]
+				prev_obj = front[j - 1].objectives[i]
+				next_obj = front[j + 1].objectives[i]
 
-				front[j].crowding_distance += (next_obj - prev_obj)/(max_obj - min_obj)
+				front[j].crowding_distance += (next_obj - prev_obj) / (max_obj - min_obj)
+
+	def gp_multi_tree_output(self, front, x):
+
+		low_dim = []
+		individuals = []
+		len_programs = []
+		fitness_list = []
+
+		for individual in front:
+
+			if self.fitness_function.fitness != "gp_autoencoder_fitness":
+				output = individual.GetOutput(x.astype(float))
+				individual_output = np.empty(output.shape)
+				for i in range(individual.num_sup_functions):
+					scaled_output = individual.sup_functions[i].ls_a + individual.sup_functions[i].ls_b * output[:, i]
+					individual_output[:, i] = scaled_output
+
+			else:
+				sub_function_outputs = list()
+				for i in range(individual.num_sub_functions):
+					sub_function_output = individual.sub_functions[i].GetOutput(x.astype(float))
+					sub_function_outputs.append(sub_function_output)
+					individual_output = np.vstack(sub_function_outputs).transpose()
+
+			low_dim.append(individual_output)
+			individuals.append(individual)
+			len_programs.append(individual.objectives[1])
+			fitness_list.append(individual.objectives[0])
+
+		return np.array(low_dim), np.array(individuals), np.array(len_programs), np.array(fitness_list)
+
+	def get_non_duplicate_front(self, front):
+
+		front_non_duplicate = []
+		front_string_format = []
+		for individual in front:
+			if individual.GetHumanExpression() not in front_string_format:
+				front_string_format.append(individual.GetHumanExpression())
+				front_non_duplicate.append(individual)
+
+		return front_non_duplicate
+
+	def get_information_from_front(self, front, x, y):
+
+		low_dim, individuals, len_programs, fitness_list = self.gp_multi_tree_output(front, x)
+
+		# get the indices sorted by the first objective
+		indice_array = np.arange(0, len(fitness_list), 1)
+		zipped_list = list(zip(fitness_list, indice_array))
+		zipped_list.sort()
+		indices = [val[1] for val in zipped_list]
+		# reorder
+		low_dim = low_dim[indices]
+		len_programs = len_programs[indices]
+		individuals = individuals[indices]
+
+		# only want information from the champion
+		x = low_dim[0]
+		length = len_programs[0]
+		champion_representation = individuals[0]
+
+		avg_acc, _ = self.k_fold_valifation_accuracy_rf(x, y, self.generations)
+
+		return avg_acc, length, champion_representation
+
+	def k_fold_valifation_accuracy_rf(self, data_x, data_y, seed, n_splits=5):
+		accuracy_list = []
+		kf = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
+		for train_indices, val_indices in kf.split(data_x):
+			x_train, y_train = data_x[train_indices], data_y[train_indices]
+			x_val, y_val = data_x[val_indices], data_y[val_indices]
+
+			scaler = StandardScaler()
+			scaler = scaler.fit(x_train)
+			x_train = scaler.transform(x_train)
+			x_val = scaler.transform(x_val)
+
+			classifier = RandomForestClassifier()
+			classifier.fit(x_train, y_train)
+			predictions = classifier.predict(x_val)
+
+			accuracy = accuracy_score(y_val, predictions)
+			accuracy_list.append(accuracy)
+
+		return np.mean(accuracy_list), np.std(accuracy_list)

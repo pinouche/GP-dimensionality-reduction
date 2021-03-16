@@ -1,5 +1,6 @@
 import multiprocessing
-import pickle, os
+import pickle
+import os
 
 from autoencoder import get_hidden_layers
 from util import train_base_model
@@ -16,22 +17,21 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_m
 
     dic_one_run = {}
 
-    split_proportion = [0.6, 0.3, 0.1]
+    # train and test
+    split_proportion = [0.5, 0.5]
 
     data_x, data_y = load_data(dataset)
     data_x, data_y = shuffle_data(data_x, data_y, seed)
 
     # data used for the unsupervised/self-supervised DR algorithms
-    base_model_data_x = data_x[:int(data_x.shape[0] * split_proportion[0])]
-    # data used to train the gp_surrogate model
-    gp_surrogate_data_x = data_x[int(data_x.shape[0] * split_proportion[0]):int(data_x.shape[0] * (split_proportion[1] + split_proportion[0]))]
-    # data used to train the random forest (for original data, base model, and gp surrogate model)
-    test_data_x, test_data_y = data_x[int(data_x.shape[0] * (1 - split_proportion[2])):], data_y[int(data_x.shape[0] * (1 - split_proportion[2])):]
+    train_data_x, train_data_y = data_x[:int(data_x.shape[0] * split_proportion[0])], data_y[:int(data_x.shape[0] * split_proportion[0])]
+    # test data
+    test_data_x, test_data_y = data_x[int(data_x.shape[0] * split_proportion[0]):],  data_y[int(data_x.shape[0] * split_proportion[0]):]
 
     # get the low dimensional representation of the data
-    model = train_base_model(base_model_data_x, seed, num_latent_dimensions)
+    model = train_base_model(train_data_x, seed, num_latent_dimensions)
 
-    low_dim_x = get_hidden_layers(model, gp_surrogate_data_x)[3]
+    low_dim_x = get_hidden_layers(model, train_data_x)[3]
     low_dim_test_x = get_hidden_layers(model, test_data_x)[3]
 
     print("Computing for original dataset")
@@ -42,41 +42,29 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_m
 
     print("Computing for method GP")
     if share_multi_tree is not None:
-        accuracy_gp, length_list, individuals = multi_tree_gp_surrogate_model(gp_surrogate_data_x, low_dim_x, test_data_x, test_data_y,
-                                                                              seed, share_multi_tree, use_phi, fitness,
+        info = multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y,
+                                                                              share_multi_tree, use_phi, fitness,
                                                                               stacked_gp, num_of_layers)
     else:
-        accuracy_gp, length_list, individuals = gp_surrogate_model(gp_surrogate_data_x, low_dim_x, test_data_x, test_data_y, seed, use_phi)
+        info = gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, seed, use_phi)
 
     dic_one_run["original_data_accuracy"] = org_avg_acc
     dic_one_run["teacher_accuracy"] = avg_acc
-    dic_one_run["gp_accuracy"] = accuracy_gp
-    dic_one_run["gp_length"] = length_list
 
-    dic_one_run["champion_individual"] = individuals[0]
-    dic_one_run["champion_accuracy"] = accuracy_gp[0]
-    dic_one_run["champion_length"] = length_list[0]
-
-    dic_one_run["median_individual"] = individuals[int(len(length_list) * 0.5)]
-    dic_one_run["median_accuracy"] = accuracy_gp[int(len(length_list) * 0.5)]
-    dic_one_run["median_length"] = length_list[int(len(length_list) * 0.5)]
-
-    dic_one_run["75%_individual"] = individuals[int(len(length_list) * 0.25)]
-    dic_one_run["75%_accuracy"] = accuracy_gp[int(len(length_list) * 0.25)]
-    dic_one_run["75%_length"] = length_list[int(len(length_list) * 0.25)]
+    dic_one_run["gp_info_generations"] = info
 
     data_struc["run_number_" + str(seed)] = dic_one_run
 
 
 if __name__ == "__main__":
 
-    num_of_runs = 1
+    num_of_runs = 30
     num_of_layers = 1
 
-    # fitness_list = ["manifold_fitness", "autoencoder_teacher_fitness", "neural_decoder_fitness", "gp_autoencoder_fitness"]
-    fitness_list = ["neural_decoder_fitness"]
+    fitness_list = ["manifold_fitness", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
+    #fitness_list = ["neural_decoder_fitness"]
 
-    for dataset in ["segmentation"]:
+    for dataset in ["segmentation", "observatory", "credit", "winequality"]:
         for use_phi in [False]:
             for stacked_gp in [False]:
                 for fitness in fitness_list:
@@ -89,9 +77,9 @@ if __name__ == "__main__":
                     elif not stacked_gp and fitness == "gp_autoencoder_fitness":
                         list_gp_method = [True]  # for gp-autoencoder fitness, we want to use the shared multi-tree GP representation
                     elif not stacked_gp and fitness == "autoencoder_teacher_fitness":  # we only want vanilla GP when using teacher model
-                        list_gp_method = [False, True, None]
+                        list_gp_method = [None]
                     else:
-                        list_gp_method = [False, True]
+                        list_gp_method = [False]
 
                     if list_gp_method:
 
@@ -105,7 +93,7 @@ if __name__ == "__main__":
                             if gp_method is not False and stacked_gp:
                                 raise ValueError("we want to to use non-shared multi-tree with stacked GP (stacked GP is already shared)")
 
-                            for num_latent_dimensions in [2]:
+                            for num_latent_dimensions in [1, 2, 3]:
 
                                 manager = multiprocessing.Manager()
                                 return_dict = manager.dict()
