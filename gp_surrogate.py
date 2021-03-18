@@ -46,7 +46,7 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
         use_linear_scaling = False
 
     estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y,
-                     pop_size=100, max_generations=100, verbose=True, max_tree_size=100,
+                     pop_size=100, max_generations=2, verbose=True, max_tree_size=100,
                      crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
                      initialization_max_tree_height=init_max_tree_height, tournament_size=2, use_linear_scaling=use_linear_scaling,
                      use_erc=False, use_interpretability_model=use_interpretability_model,
@@ -72,18 +72,19 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
     train_data_x = scaler.transform(train_data_x)
     test_data_x = scaler.transform(test_data_x)
 
+    print(low_dim_x.shape)
     num_latent_dimensions = low_dim_x.shape[1]
     num_sample_train = train_data_x.shape[0]
     num_sample_test = test_data_x.shape[0]
 
-    low_dim_train_array = np.empty((10, num_latent_dimensions, num_sample_train))
-    low_dim_test_array = np.empty((10, num_latent_dimensions, num_sample_test))
+    low_dim_train_array = np.empty((3, num_latent_dimensions, num_sample_train))
+    low_dim_test_array = np.empty((3, num_latent_dimensions, num_sample_test))
     individuals = [[] for _ in range(num_latent_dimensions)]
 
     for index in range(num_latent_dimensions):
 
         estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y,
-                         pop_size=100, max_generations=100, verbose=True, max_tree_size=100,
+                         pop_size=100, max_generations=3, verbose=True, max_tree_size=100,
                          crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
                          initialization_max_tree_height=7, tournament_size=2, use_linear_scaling=True,
                          use_erc=False, use_interpretability_model=use_interpretability_model,
@@ -104,21 +105,25 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
         low_dim_test_array[:, index, :] = low_dim_test
 
     individuals = np.squeeze(np.array(individuals))
-    summed_length = np.sum(np.reshape(np.array([ind.objectives[1] for ind in individuals.flatten()]), individuals.shape), axis=0)
+    summed_length = np.reshape(np.array([ind.objectives[1] for ind in individuals.flatten()]), individuals.shape)
+    if num_latent_dimensions > 1:
+        summed_length = np.sum(summed_length, axis=0)
+
+    print(individuals.shape, summed_length.shape, summed_length)
 
     # get the information here (accuracy, len, individual) for each generation, similarly to multi_tree_output
 
     # range(2) is to store information for both train and test
     info = [[] for _ in range(2)]
     for index in range(low_dim_train_array.shape[0]):
-        x_train, x_test = low_dim_train_array[index, :, :], low_dim_test_array[index, :, :]
+        x_train, x_test = low_dim_train_array[index], low_dim_test_array[index]
         x_train, x_test = np.transpose(x_train), np.transpose(x_test)
 
         avg_acc_train, _ = k_fold_valifation_accuracy_rf(x_train, train_data_y, seed)
         avg_acc_test, _ = k_fold_valifation_accuracy_rf(x_test, test_data_y, seed)
 
-        info[0].append((avg_acc_train, summed_length[index], individuals[:, index]))
-        info[1].append((avg_acc_test, summed_length[index], individuals[:, index]))
+        info[0].append((avg_acc_train, summed_length[index], np.transpose(individuals)[index]))
+        info[1].append((avg_acc_test, summed_length[index], np.transpose(individuals)[index]))
 
     return info
 
@@ -132,7 +137,7 @@ def get_building_blocks(data_x, low_dim_x, test_data_x, use_interpretability_mod
     else:
         use_linear_scaling = False
 
-    estimator = NSGP(pop_size=100, max_generations=100, verbose=True, max_tree_size=100,
+    estimator = NSGP(pop_size=100, max_generations=2, verbose=True, max_tree_size=100,
                      crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
                      initialization_max_tree_height=3, tournament_size=2, use_linear_scaling=use_linear_scaling,
                      use_erc=False, use_interpretability_model=use_interpretability_model,
