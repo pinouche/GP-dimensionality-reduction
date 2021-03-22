@@ -58,13 +58,14 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_m
 
 if __name__ == "__main__":
 
-    num_of_runs = 30
+    num_of_runs = 1
     num_of_layers = 1
 
-    fitness_list = ["manifold_fitness", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
+    #fitness_list = ["manifold_fitness", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
     #fitness_list = ["neural_decoder_fitness"]
+    fitness_list = ["autoencoder_teacher_fitness"]
 
-    for dataset in ["segmentation", "observatory", "credit", "winequality"]:
+    for dataset in ["segmentation"]:
         for use_phi in [False]:
             for stacked_gp in [False]:
                 for fitness in fitness_list:
@@ -93,7 +94,7 @@ if __name__ == "__main__":
                             if gp_method is not False and stacked_gp:
                                 raise ValueError("we want to to use non-shared multi-tree with stacked GP (stacked GP is already shared)")
 
-                            for num_latent_dimensions in [1, 2, 3]:
+                            for num_latent_dimensions in [1]:
 
                                 manager = multiprocessing.Manager()
                                 return_dict = manager.dict()
@@ -132,4 +133,4 @@ if __name__ == "__main__":
                                 else:
                                     file_name = file_name + "_len"
 
-                                pickle.dump(results, open(file_name + ".p", "wb"))
+                                #pickle.dump(results, open(file_name + ".p", "wb"))
