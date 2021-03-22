@@ -26,10 +26,11 @@ def plot_low_dim(low_dim_representation, data_y, name=None):
         plt.show()
 
 
-def k_fold_valifation_accuracy_rf(data_x, data_y, seed, n_splits=5):
+def k_fold_valifation_accuracy_rf(data_x, data_y, n_splits=5):
     accuracy_list = []
-    kf = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
+    kf = KFold(n_splits=n_splits, shuffle=True, random_state=0)
     for train_indices, val_indices in kf.split(data_x):
+        print(train_indices[:10])
         x_train, y_train = data_x[train_indices], data_y[train_indices]
         x_val, y_val = data_x[val_indices], data_y[val_indices]
 

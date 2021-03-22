@@ -35,10 +35,10 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_m
     low_dim_test_x = get_hidden_layers(model, test_data_x)[3]
 
     print("Computing for original dataset")
-    org_avg_acc, org_std_acc = k_fold_valifation_accuracy_rf(test_data_x, test_data_y, seed)
+    org_avg_acc, org_std_acc = k_fold_valifation_accuracy_rf(test_data_x, test_data_y)
 
     print("Computing for teacher")
-    avg_acc, std_acc = k_fold_valifation_accuracy_rf(low_dim_test_x, test_data_y, seed)
+    avg_acc, std_acc = k_fold_valifation_accuracy_rf(low_dim_test_x, test_data_y)
 
     print("Computing for method GP")
     if share_multi_tree is not None:
@@ -46,7 +46,7 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_m
                                                                               share_multi_tree, use_phi, fitness,
                                                                               stacked_gp, num_of_layers)
     else:
-        info = gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, seed, use_phi)
+        info = gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, use_phi)
 
     dic_one_run["original_data_accuracy"] = org_avg_acc
     dic_one_run["teacher_accuracy"] = avg_acc
@@ -61,9 +61,7 @@ if __name__ == "__main__":
     num_of_runs = 1
     num_of_layers = 1
 
-    #fitness_list = ["manifold_fitness", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
-    #fitness_list = ["neural_decoder_fitness"]
-    fitness_list = ["autoencoder_teacher_fitness"]
+    fitness_list = ["manifold_fitness", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
 
     for dataset in ["segmentation"]:
         for use_phi in [False]:

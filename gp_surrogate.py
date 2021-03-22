@@ -65,26 +65,27 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
     return info
 
 
-def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, seed, use_interpretability_model=False):
+def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, use_interpretability_model=False):
 
     scaler = StandardScaler()
     scaler.fit(train_data_x)
     train_data_x = scaler.transform(train_data_x)
     test_data_x = scaler.transform(test_data_x)
 
-    print(low_dim_x.shape)
+    num_generations = 2
+
     num_latent_dimensions = low_dim_x.shape[1]
     num_sample_train = train_data_x.shape[0]
     num_sample_test = test_data_x.shape[0]
 
-    low_dim_train_array = np.empty((3, num_latent_dimensions, num_sample_train))
-    low_dim_test_array = np.empty((3, num_latent_dimensions, num_sample_test))
+    low_dim_train_array = np.empty((num_generations, num_latent_dimensions, num_sample_train))
+    low_dim_test_array = np.empty((num_generations, num_latent_dimensions, num_sample_test))
     individuals = [[] for _ in range(num_latent_dimensions)]
 
     for index in range(num_latent_dimensions):
 
         estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y,
-                         pop_size=100, max_generations=3, verbose=True, max_tree_size=100,
+                         pop_size=100, max_generations=num_generations, verbose=True, max_tree_size=100,
                          crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
                          initialization_max_tree_height=7, tournament_size=2, use_linear_scaling=True,
                          use_erc=False, use_interpretability_model=use_interpretability_model,
@@ -119,8 +120,8 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
         x_train, x_test = low_dim_train_array[index], low_dim_test_array[index]
         x_train, x_test = np.transpose(x_train), np.transpose(x_test)
 
-        avg_acc_train, _ = k_fold_valifation_accuracy_rf(x_train, train_data_y, seed)
-        avg_acc_test, _ = k_fold_valifation_accuracy_rf(x_test, test_data_y, seed)
+        avg_acc_train, _ = k_fold_valifation_accuracy_rf(x_train, train_data_y)
+        avg_acc_test, _ = k_fold_valifation_accuracy_rf(x_test, test_data_y)
 
         info[0].append((avg_acc_train, summed_length[index], np.transpose(individuals)[index]))
         info[1].append((avg_acc_test, summed_length[index], np.transpose(individuals)[index]))
@@ -128,7 +129,8 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
     return info
 
 
-def get_building_blocks(data_x, low_dim_x, test_data_x, use_interpretability_model=False, fitness="autoencoder_teacher_fitness"):
+def get_building_blocks(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, use_interpretability_model=False,
+                        fitness="autoencoder_teacher_fitness"):
 
     num_sub_functions = 0
 
@@ -137,7 +139,8 @@ def get_building_blocks(data_x, low_dim_x, test_data_x, use_interpretability_mod
     else:
         use_linear_scaling = False
 
-    estimator = NSGP(pop_size=100, max_generations=2, verbose=True, max_tree_size=100,
+    estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y,
+                     pop_size=100, max_generations=2, verbose=True, max_tree_size=100,
                      crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
                      initialization_max_tree_height=3, tournament_size=2, use_linear_scaling=use_linear_scaling,
                      use_erc=False, use_interpretability_model=use_interpretability_model,
@@ -146,13 +149,13 @@ def get_building_blocks(data_x, low_dim_x, test_data_x, use_interpretability_mod
                      fitness=fitness,
                      num_sub_functions=num_sub_functions)
 
-    estimator.fit(data_x, low_dim_x)
+    estimator.fit(train_data_x, low_dim_x)
 
     front_non_duplicate = get_non_duplicate_front(estimator)
     print("non-duplicate front length: " + str(len(front_non_duplicate)))
 
-    building_blocks_train, _, _, _ = gp_multi_tree_output(front_non_duplicate, data_x)
-    building_blocks_test, _, _, _ = gp_multi_tree_output(front_non_duplicate, test_data_x)
+    building_blocks_train, _, _, _ = gp_multi_tree_output(front_non_duplicate, train_data_x, fitness)
+    building_blocks_test, _, _, _ = gp_multi_tree_output(front_non_duplicate, test_data_x, fitness)
 
     return building_blocks_train, building_blocks_test
 
