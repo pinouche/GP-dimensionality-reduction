@@ -2,6 +2,7 @@ from pynsgp.Nodes.SymbolicRegressionNodes import *
 from pynsgp.SKLearnInterface import pyNSGPEstimator as NSGP
 
 from sklearn.preprocessing import StandardScaler
+import keras
 
 from util import k_fold_valifation_accuracy_rf
 
@@ -23,8 +24,6 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
             for index in range(building_blocks_train.shape[0]):
                 train_data_x = np.hstack((train_data_x, building_blocks_train[index]))
                 test_data_x = np.hstack((test_data_x, building_blocks_test[index]))
-                
-            print(train_data_x.shape, building_blocks_train.shape)
 
     # Prepare NSGP settings
     if share_multi_tree and fitness != "gp_autoencoder_fitness":
@@ -110,21 +109,18 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
     if num_latent_dimensions > 1:
         summed_length = np.sum(summed_length, axis=0)
 
-    print(individuals.shape, summed_length.shape, summed_length)
-
-    # get the information here (accuracy, len, individual) for each generation, similarly to multi_tree_output
-
     # range(2) is to store information for both train and test
     info = [[] for _ in range(2)]
     for index in range(low_dim_train_array.shape[0]):
-        x_train, x_test = low_dim_train_array[index], low_dim_test_array[index]
-        x_train, x_test = np.transpose(x_train), np.transpose(x_test)
+        x_train_low, x_test_low = np.transpose(low_dim_train_array[index]), np.transpose(low_dim_test_array[index])
 
-        avg_acc_train, _ = k_fold_valifation_accuracy_rf(x_train, train_data_y)
-        avg_acc_test, _ = k_fold_valifation_accuracy_rf(x_test, test_data_y)
+        avg_acc_train, _ = k_fold_valifation_accuracy_rf(x_train_low, train_data_y)
+        avg_acc_test, _ = k_fold_valifation_accuracy_rf(x_test_low, test_data_y)
 
-        info[0].append((avg_acc_train, summed_length[index], np.transpose(individuals)[index]))
-        info[1].append((avg_acc_test, summed_length[index], np.transpose(individuals)[index]))
+        train_reconstrution_loss, test_reconstruction_loss = neural_decoder_fitness(x_train_low, x_test_low, train_data_x, test_data_x)
+
+        info[0].append((avg_acc_train, train_reconstrution_loss, summed_length[index], np.transpose(individuals)[index]))
+        info[1].append((avg_acc_test, test_reconstruction_loss, summed_length[index], np.transpose(individuals)[index]))
 
     return info
 
@@ -216,3 +212,37 @@ def get_non_duplicate_front(estimator):
             front_non_duplicate.append(individual)
 
     return front_non_duplicate
+
+
+def neural_decoder_fitness(x_low_train, x_low_test, x_train, x_test):
+
+    scaler = StandardScaler()
+    scaler.fit(x_low_train)
+    x_low_train = scaler.transform(x_low_train)
+    x_low_test = scaler.transform(x_low_test)
+
+    input_size = x_train.shape[1]
+    latent_size = x_low_train.shape[1]
+    initializer = keras.initializers.glorot_normal()
+
+    model = keras.models.Sequential([
+
+        # latent_layer
+        keras.layers.Dense(int((input_size + latent_size) / 2), activation="elu", use_bias=True,
+                           trainable=True, kernel_initializer=initializer, input_shape=(latent_size,)),
+
+        keras.layers.Dense(input_size, activation=keras.activations.linear, use_bias=False,
+                           trainable=True, kernel_initializer=initializer)
+    ])
+
+    adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False)
+    model.compile(optimizer=adam, loss='mse', metrics=['mse'])
+
+    model_info = model.fit(x_low_train, x_train, batch_size=32, epochs=200, verbose=False, validation_data=(x_low_test, x_test))
+    training_loss = model_info.history["loss"][-1]
+    test_loss = model_info.history["val_loss"][-1]
+
+    keras.backend.clear_session()
+
+    return training_loss, test_loss
+

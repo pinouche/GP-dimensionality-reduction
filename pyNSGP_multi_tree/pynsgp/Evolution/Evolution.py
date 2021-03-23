@@ -2,6 +2,7 @@ import numpy as np
 from numpy.random import random, randint
 import time
 from copy import deepcopy
+import keras
 
 from sklearn.model_selection import KFold
 from sklearn.ensemble import RandomForestClassifier
@@ -235,11 +236,15 @@ class pyNSGP:
 			# compute information from the champion HERE
 			if self.use_multi_tree:
 				front_non_duplicate = self.get_non_duplicate_front(self.latest_front)
-				accuracy_champ_train, len_champ_train, tree_champ = self.get_information_from_front(front_non_duplicate, self.x_train, self.y_train)
-				accuracy_champ_test, len_champ_test, tree_champ = self.get_information_from_front([tree_champ], self.x_test, self.y_test)
+				accuracy_champ_train, len_champ_train, tree_champ, x_low_train = self.get_information_from_front(front_non_duplicate, self.x_train,
+																												 self.y_train)
+				accuracy_champ_test, len_champ_test, tree_champ, x_low_test = self.get_information_from_front([tree_champ], self.x_test,
+																											  self.y_test)
 
-				list_info[0].append((accuracy_champ_train, len_champ_train, tree_champ))
-				list_info[1].append((accuracy_champ_test, len_champ_train, tree_champ))
+				reconstruction_train_loss, reconstruction_test_loss = self.neural_decoder_fitness(x_low_train, x_low_test)
+
+				list_info[0].append((accuracy_champ_train, reconstruction_train_loss, len_champ_train, tree_champ))
+				list_info[1].append((accuracy_champ_test, reconstruction_test_loss, len_champ_train, tree_champ))
 			else:
 				list_info.append(self.fitness_function.elite)
 
@@ -399,17 +404,17 @@ class pyNSGP:
 		individuals = individuals[indices]
 
 		# only want information from the champion
-		x = low_dim[0]
+		x_low = low_dim[0]
 		length = len_programs[0]
 		champion_representation = individuals[0]
 
-		avg_acc, _ = self.k_fold_valifation_accuracy_rf(x, y, self.generations)
+		avg_acc, _ = self.k_fold_valifation_accuracy_rf(x_low, y)
 
-		return avg_acc, length, champion_representation
+		return avg_acc, length, champion_representation, x_low
 
-	def k_fold_valifation_accuracy_rf(self, data_x, data_y, seed, n_splits=5):
+	def k_fold_valifation_accuracy_rf(self, data_x, data_y, n_splits=5):
 		accuracy_list = []
-		kf = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
+		kf = KFold(n_splits=n_splits, shuffle=True, random_state=0)
 		for train_indices, val_indices in kf.split(data_x):
 			x_train, y_train = data_x[train_indices], data_y[train_indices]
 			x_val, y_val = data_x[val_indices], data_y[val_indices]
@@ -427,3 +432,44 @@ class pyNSGP:
 			accuracy_list.append(accuracy)
 
 		return np.mean(accuracy_list), np.std(accuracy_list)
+
+	# fitness function that trains a decoder to use as the fitness
+	def neural_decoder_fitness(self, x_low_train, x_low_test):
+
+		scaler = StandardScaler()
+		scaler.fit(x_low_train)
+		x_low_train = scaler.transform(x_low_train)
+		x_low_test = scaler.transform(x_low_test)
+
+		x_train_org = self.x_train
+		x_test_org = self.x_test
+
+		scaler = StandardScaler()
+		scaler.fit(x_train_org)
+		x_train_org = scaler.transform(x_train_org)
+		x_test_org = scaler.transform(x_test_org)
+
+		input_size = x_train_org.shape[1]
+		latent_size = x_low_train.shape[1]
+		initializer = keras.initializers.glorot_normal()
+
+		model = keras.models.Sequential([
+
+			# latent_layer
+			keras.layers.Dense(int((input_size + latent_size) / 2), activation="elu", use_bias=True,
+							   trainable=True, kernel_initializer=initializer, input_shape=(latent_size,)),
+
+			keras.layers.Dense(input_size, activation=keras.activations.linear, use_bias=False,
+							   trainable=True, kernel_initializer=initializer)
+		])
+
+		adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False)
+		model.compile(optimizer=adam, loss='mse', metrics=['mse'])
+
+		model_info = model.fit(x_low_train, x_train_org, batch_size=32, epochs=200, verbose=False, validation_data=(x_low_test, x_test_org))
+		training_loss = model_info.history["loss"][-1]
+		test_loss = model_info.history["val_loss"][-1]
+
+		keras.backend.clear_session()
+
+		return training_loss, test_loss
