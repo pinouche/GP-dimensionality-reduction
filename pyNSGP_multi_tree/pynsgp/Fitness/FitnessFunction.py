@@ -111,18 +111,18 @@ class SymbolicRegressionFitness:
                 distance_original = similarity_matrix_batch[count_low:count_end]
                 distances_lower_dim = similarity_matrix_pred[count_low:count_end]
 
-                corr = spearmanr(distance_original, distances_lower_dim)
+                arg_d_original = list(np.argsort(distance_original))
+                arg_d_lower_dim = list(np.argsort(distances_lower_dim))
+
+                cost = 0
+                for index in range(len(arg_d_original)):
+                    cost += np.abs(arg_d_original.index(index)-arg_d_lower_dim.index(index))
 
                 count_low += batch_size - (i + 1)
 
-                # we can get nan if var(constant) or if the p value is taken for only one sample.
-                if np.isnan(corr[0]) or np.isnan(corr[1]):
-                    cost_list.append(1)
-                else:
-                    cost = corr[1] * (np.sign(corr[0]) * -1)
-                    cost_list.append(cost)
+                cost_list.append(cost)
 
-            fitness = np.mean(cost_list)
+            fitness = np.sum(cost_list)
 
         return fitness
 
