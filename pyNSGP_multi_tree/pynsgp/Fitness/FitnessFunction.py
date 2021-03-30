@@ -2,6 +2,7 @@ import numpy as np
 from copy import deepcopy
 import random
 from scipy.spatial.distance import pdist
+from scipy.stats import spearmanr
 import keras
 from sklearn.preprocessing import StandardScaler
 
@@ -27,7 +28,7 @@ class SymbolicRegressionFitness:
         self.evaluations = self.evaluations + 1
         individual.objectives = []
 
-        if self.fitness == "manifold_fitness":
+        if self.fitness == "manifold_fitness_absolute" or self.fitness == "manifold_fitness_rank":
             obj1 = self.stress_cost(individual, 64)
         elif self.fitness == "neural_decoder_fitness":
             obj1 = self.neural_decoder_fitness(individual, self.evaluations)
@@ -89,16 +90,41 @@ class SymbolicRegressionFitness:
         random.seed(self.evaluations)
         indices_vector = random.sample(range(self.X_train.shape[0]), batch_size)
 
+        # compute distances on the original data
         similarity_matrix_batch = pdist(self.X_train[indices_vector], 'euclidean')
 
         prediction_batch = self.X_train[indices_vector]
         output = individual.GetOutput(prediction_batch)
-
+        # compute distances on the gp predictions (lower dimensional data)
         similarity_matrix_pred = pdist(output, 'euclidean')
 
-        cost = np.sum(np.abs(similarity_matrix_batch - similarity_matrix_pred))
+        if self.fitness == "manifold_fitness_absolute":
+            fitness = np.sum(np.abs(similarity_matrix_batch - similarity_matrix_pred))
+        elif self.fitness == "manifold_fitness_rank":
+            count_end = 0
+            count_low = 0
 
-        return cost
+            cost_list = []
+            for i in range(batch_size):
+                count_end += batch_size - (i + 1)
+
+                distance_original = similarity_matrix_batch[count_low:count_end]
+                distances_lower_dim = similarity_matrix_pred[count_low:count_end]
+
+                corr = spearmanr(distance_original, distances_lower_dim)
+
+                count_low += batch_size - (i + 1)
+
+                # we can get nan if var(constant) or if the p value is taken for only one sample.
+                if np.isnan(corr[0]) or np.isnan(corr[1]):
+                    cost_list.append(1)
+                else:
+                    cost = corr[1] * (np.sign(corr[0]) * -1)
+                    cost_list.append(cost)
+
+            fitness = np.mean(cost_list)
+
+        return fitness
 
     # fitness function that trains a decoder to use as the fitness
     def neural_decoder_fitness(self, individual, seed):

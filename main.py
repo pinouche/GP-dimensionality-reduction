@@ -61,7 +61,7 @@ if __name__ == "__main__":
     num_of_runs = 1
     num_of_layers = 1
 
-    fitness_list = ["manifold_fitness", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
+    fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
 
     for dataset in ["segmentation"]:
         for use_phi in [False]:
@@ -86,7 +86,7 @@ if __name__ == "__main__":
                             print("THE GP METHOD IS")
                             print("stacked_gp: ", stacked_gp, "fitness: ", fitness, "GP representation: ", gp_method)
 
-                            if gp_method is None and (fitness == "manifold_fitness" or fitness == "neural_decoder_fitness"):
+                            if gp_method is None and ("manifold_fitness" in fitness or fitness == "neural_decoder_fitness"):
                                 raise ValueError("the GP representation is not multi-tree and the fitness function is manifold function!")
 
                             if gp_method is not False and stacked_gp:

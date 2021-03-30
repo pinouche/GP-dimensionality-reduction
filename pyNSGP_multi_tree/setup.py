@@ -1,7 +1,7 @@
 import setuptools
 
-with open('README.md', 'r') as fh:
-    long_description = fh.read()
+#with open('README.md', 'r') as fh:
+#    long_description = fh.read()
 
 
 setuptools.setup(
@@ -11,7 +11,7 @@ setuptools.setup(
     author_email='marco.virgolin@gmail.com',
     url='https://github.com/marcovirgolin/pyNSGP',
     packages=setuptools.find_packages(),
-    long_description=long_description,
+    #long_description=long_description,
     long_description_content_type='text/markdown',
     setup_requires=['wheel'],
     install_requires=[
