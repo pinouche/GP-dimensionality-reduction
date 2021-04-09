@@ -8,7 +8,7 @@ from util import k_fold_valifation_accuracy_rf
 
 
 def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, share_multi_tree, use_interpretability_model=False,
-                                  fitness="autoencoder_teacher_fitness", stacked_gp=False, num_of_layers=1):
+                                  fitness="autoencoder_teacher_fitness", stacked_gp=False, pop_size=100):
 
     scaler = StandardScaler()
     scaler.fit(train_data_x)
@@ -16,10 +16,11 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
     test_data_x = scaler.transform(test_data_x)
 
     if stacked_gp:
-        for layer in range(num_of_layers):
+        for layer in range(1):
             print("COMPUTING FOR LAYER: " + str(layer))
-            building_blocks_train, building_blocks_test = get_building_blocks(train_data_x, low_dim_x, test_data_x, use_interpretability_model,
-                                                                              fitness)
+            building_blocks_train, building_blocks_test = get_building_blocks(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y,
+                                                                              use_interpretability_model,
+                                                                              fitness, pop_size)
 
             for index in range(building_blocks_train.shape[0]):
                 train_data_x = np.hstack((train_data_x, building_blocks_train[index]))
@@ -45,7 +46,7 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
         use_linear_scaling = False
 
     estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y,
-                     pop_size=100, max_generations=2, verbose=True, max_tree_size=100,
+                     pop_size=pop_size, max_generations=10, verbose=True, max_tree_size=100,
                      crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
                      initialization_max_tree_height=init_max_tree_height, tournament_size=2, use_linear_scaling=use_linear_scaling,
                      use_erc=False, use_interpretability_model=use_interpretability_model,
@@ -64,7 +65,7 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
     return info
 
 
-def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, use_interpretability_model=False):
+def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, use_interpretability_model=False, pop_size=100):
 
     scaler = StandardScaler()
     scaler.fit(train_data_x)
@@ -84,7 +85,7 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
     for index in range(num_latent_dimensions):
 
         estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y,
-                         pop_size=100, max_generations=num_generations, verbose=True, max_tree_size=100,
+                         pop_size=pop_size, max_generations=num_generations, verbose=True, max_tree_size=100,
                          crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
                          initialization_max_tree_height=7, tournament_size=2, use_linear_scaling=True,
                          use_erc=False, use_interpretability_model=use_interpretability_model,
@@ -126,7 +127,7 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
 
 
 def get_building_blocks(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, use_interpretability_model=False,
-                        fitness="autoencoder_teacher_fitness"):
+                        fitness="autoencoder_teacher_fitness", pop_size=100):
 
     num_sub_functions = 0
 
@@ -136,7 +137,7 @@ def get_building_blocks(train_data_x, low_dim_x, train_data_y, test_data_x, test
         use_linear_scaling = False
 
     estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y,
-                     pop_size=100, max_generations=2, verbose=True, max_tree_size=100,
+                     pop_size=pop_size, max_generations=2, verbose=True, max_tree_size=100,
                      crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
                      initialization_max_tree_height=3, tournament_size=2, use_linear_scaling=use_linear_scaling,
                      use_erc=False, use_interpretability_model=use_interpretability_model,

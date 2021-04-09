@@ -12,7 +12,7 @@ from load_data import shuffle_data
 
 
 def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_multi_tree=False, use_phi=False, fitness="autoencoder_teacher_fitness",
-                     stacked_gp=False, num_of_layers=1):
+                     stacked_gp=False, pop_size=100):
     print("COMPUTING FOR RUN NUMBER: " + str(seed))
 
     dic_one_run = {}
@@ -44,9 +44,9 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_m
     if share_multi_tree is not None:
         info = multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y,
                                                                               share_multi_tree, use_phi, fitness,
-                                                                              stacked_gp, num_of_layers)
+                                                                              stacked_gp, pop_size)
     else:
-        info = gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, use_phi)
+        info = gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, use_phi, pop_size)
 
     dic_one_run["original_data_accuracy"] = org_avg_acc
     dic_one_run["teacher_accuracy"] = avg_acc
@@ -59,9 +59,10 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_m
 if __name__ == "__main__":
 
     num_of_runs = 1
-    num_of_layers = 1
+    pop_size = 100
 
-    fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
+    # fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
+    fitness_list = ["manifold_fitness_rank"]
 
     for dataset in ["segmentation"]:
         for use_phi in [False]:
@@ -92,14 +93,14 @@ if __name__ == "__main__":
                             if gp_method is not False and stacked_gp:
                                 raise ValueError("we want to to use non-shared multi-tree with stacked GP (stacked GP is already shared)")
 
-                            for num_latent_dimensions in [1]:
+                            for num_latent_dimensions in [2]:
 
                                 manager = multiprocessing.Manager()
                                 return_dict = manager.dict()
 
                                 p = [multiprocessing.Process(target=low_dim_accuracy,
                                                              args=(dataset, seed, return_dict, num_latent_dimensions, gp_method,
-                                                                   use_phi, fitness, stacked_gp, num_of_layers))
+                                                                   use_phi, fitness, stacked_gp, pop_size))
                                                                    for seed in range(num_of_runs)]
 
                                 for proc in p:
@@ -130,5 +131,7 @@ if __name__ == "__main__":
                                     file_name = file_name + "_phi"
                                 else:
                                     file_name = file_name + "_len"
+
+                                file_name = file_name + "_pop=" + pop_size
 
                                 #pickle.dump(results, open(file_name + ".p", "wb"))
