@@ -26,7 +26,7 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_m
     # data used for the unsupervised/self-supervised DR algorithms
     train_data_x, train_data_y = data_x[:int(data_x.shape[0] * split_proportion[0])], data_y[:int(data_x.shape[0] * split_proportion[0])]
     # test data
-    test_data_x, test_data_y = data_x[int(data_x.shape[0] * split_proportion[0]):],  data_y[int(data_x.shape[0] * split_proportion[0]):]
+    test_data_x, test_data_y = data_x[int(data_x.shape[0] * split_proportion[0]):], data_y[int(data_x.shape[0] * split_proportion[0]):]
 
     # get the low dimensional representation of the data
     model = train_base_model(train_data_x, seed, num_latent_dimensions)
@@ -42,16 +42,17 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_m
 
     print("Computing for method GP")
     if share_multi_tree is not None:
-        info = multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y,
-                                                                              share_multi_tree, use_phi, fitness,
-                                                                              stacked_gp, pop_size)
+        info, front_last_generation = multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y,
+                                                                    share_multi_tree, use_phi, fitness,
+                                                                    stacked_gp, pop_size)
     else:
-        info = gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, use_phi, pop_size)
+        # here, front_last_generation is None
+        info, front_last_generation = gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, use_phi, pop_size)
 
     dic_one_run["original_data_accuracy"] = org_avg_acc
     dic_one_run["teacher_accuracy"] = avg_acc
-
     dic_one_run["gp_info_generations"] = info
+    dic_one_run["front_last_generation"] = front_last_generation
 
     data_struc["run_number_" + str(seed)] = dic_one_run
 
@@ -61,8 +62,7 @@ if __name__ == "__main__":
     num_of_runs = 1
     pop_size = 100
 
-    # fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
-    fitness_list = ["manifold_fitness_rank"]
+    fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
 
     for dataset in ["segmentation"]:
         for use_phi in [False]:
@@ -77,7 +77,7 @@ if __name__ == "__main__":
                     elif not stacked_gp and fitness == "gp_autoencoder_fitness":
                         list_gp_method = [True]  # for gp-autoencoder fitness, we want to use the shared multi-tree GP representation
                     elif not stacked_gp and fitness == "autoencoder_teacher_fitness":  # we only want vanilla GP when using teacher model
-                        list_gp_method = [None]
+                        list_gp_method = [None, False, True]
                     else:
                         list_gp_method = [False]
 
@@ -101,7 +101,7 @@ if __name__ == "__main__":
                                 p = [multiprocessing.Process(target=low_dim_accuracy,
                                                              args=(dataset, seed, return_dict, num_latent_dimensions, gp_method,
                                                                    use_phi, fitness, stacked_gp, pop_size))
-                                                                   for seed in range(num_of_runs)]
+                                     for seed in range(num_of_runs)]
 
                                 for proc in p:
                                     proc.start()
@@ -132,6 +132,6 @@ if __name__ == "__main__":
                                 else:
                                     file_name = file_name + "_len"
 
-                                file_name = file_name + "_pop=" + pop_size
+                                file_name = file_name + "_pop=" + str(pop_size)
 
-                                #pickle.dump(results, open(file_name + ".p", "wb"))
+                                pickle.dump(results, open(file_name + ".p", "wb"))

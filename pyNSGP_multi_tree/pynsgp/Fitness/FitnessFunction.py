@@ -2,7 +2,6 @@ import numpy as np
 from copy import deepcopy
 import random
 from scipy.spatial.distance import pdist
-from scipy.stats import spearmanr
 import keras
 from sklearn.preprocessing import StandardScaler
 

@@ -233,21 +233,6 @@ class pyNSGP:
 			fronts = self.FastNonDominatedSorting(PO)
 			self.latest_front = deepcopy(fronts[0])
 
-			# compute information from the champion HERE
-			if self.use_multi_tree:
-				front_non_duplicate = self.get_non_duplicate_front(self.latest_front)
-				accuracy_champ_train, len_champ_train, tree_champ, x_low_train = self.get_information_from_front(front_non_duplicate, self.x_train,
-																												 self.y_train)
-				accuracy_champ_test, len_champ_test, tree_champ, x_low_test = self.get_information_from_front([tree_champ], self.x_test,
-																											  self.y_test)
-
-				reconstruction_train_loss, reconstruction_test_loss = self.neural_decoder_fitness(x_low_train, x_low_test)
-
-				list_info[0].append((accuracy_champ_train, reconstruction_train_loss, len_champ_train, tree_champ))
-				list_info[1].append((accuracy_champ_test, reconstruction_test_loss, len_champ_train, tree_champ))
-			else:
-				list_info.append(self.fitness_function.elite)
-
 			curr_front_idx = 0
 			while curr_front_idx < len(fronts) and len(fronts[curr_front_idx]) + len(new_population) <= self.pop_size:
 				self.ComputeCrowdingDistances(fronts[curr_front_idx])
@@ -268,13 +253,45 @@ class pyNSGP:
 				while len(fronts[curr_front_idx]) > 0:
 					del fronts[curr_front_idx][0]
 
-			self.population = new_population
-			self.generations = self.generations + 1
-
 			if self.verbose:
 				print('g:', self.generations, 'elite obj1:', np.round(self.fitness_function.elite.objectives[0], 3),
 					  ', obj2:', np.round(self.fitness_function.elite.objectives[1], 3))
 				print('elite:', self.fitness_function.elite.GetHumanExpression())
+
+			# compute information from the champion HERE
+			if self.use_multi_tree:
+				front_non_duplicate = self.get_non_duplicate_front(self.latest_front)
+				accuracy_champ_train, len_champ_train, tree_champ, x_low_train = self.get_information_from_front(front_non_duplicate,
+																														 self.x_train,
+																														 self.y_train)
+				accuracy_champ_test, len_champ_test, tree_champ, x_low_test = self.get_information_from_front(front_non_duplicate,
+																													  self.x_test,
+																													  self.y_test)
+
+				reconstruction_train_loss, reconstruction_test_loss = self.neural_decoder_fitness(x_low_train, x_low_test)
+
+				list_info[0].append((accuracy_champ_train, reconstruction_train_loss, len_champ_train, tree_champ))
+				list_info[1].append((accuracy_champ_test, reconstruction_test_loss, len_champ_train, tree_champ))
+
+				if self.generations == self.max_generations - 1:
+					print("NOODLES")
+					front_non_duplicate = self.get_non_duplicate_front(self.latest_front)
+
+					front_information = []
+					for individual in front_non_duplicate:
+						accuracy_train, length, tree, x_low_train = self.get_information_from_front([individual], self.x_train, self.y_train)
+						accuracy_test, length, tree, x_low_test = self.get_information_from_front([individual], self.x_test, self.y_test)
+						reconstruction_train_loss, reconstruction_test_loss = self.neural_decoder_fitness(x_low_train, x_low_test)
+
+						front_information.append((accuracy_test, reconstruction_test_loss, length, tree))
+
+					self.front_information = front_information
+
+			else:
+				list_info.append(self.fitness_function.elite)
+
+			self.population = new_population
+			self.generations = self.generations + 1
 
 		self.info_generations = list_info
 

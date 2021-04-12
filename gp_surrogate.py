@@ -46,7 +46,7 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
         use_linear_scaling = False
 
     estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y,
-                     pop_size=pop_size, max_generations=10, verbose=True, max_tree_size=100,
+                     pop_size=pop_size, max_generations=2, verbose=True, max_tree_size=100,
                      crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
                      initialization_max_tree_height=init_max_tree_height, tournament_size=2, use_linear_scaling=use_linear_scaling,
                      use_erc=False, use_interpretability_model=use_interpretability_model,
@@ -61,8 +61,9 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
         estimator.fit(train_data_x, train_data_x)
 
     info = estimator.get_list_info()
+    front_information = estimator.get_front_info()
 
-    return info
+    return info, front_information
 
 
 def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, use_interpretability_model=False, pop_size=100):
@@ -123,7 +124,7 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
         info[0].append((avg_acc_train, train_reconstrution_loss, summed_length[index], np.transpose(individuals)[index]))
         info[1].append((avg_acc_test, test_reconstruction_loss, summed_length[index], np.transpose(individuals)[index]))
 
-    return info
+    return info, None
 
 
 def get_building_blocks(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, use_interpretability_model=False,
