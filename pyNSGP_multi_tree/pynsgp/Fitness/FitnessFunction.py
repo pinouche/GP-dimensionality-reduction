@@ -1,7 +1,8 @@
 import numpy as np
 from copy import deepcopy
 import random
-from scipy.spatial.distance import pdist
+from scipy.spatial.distance import pdist, squareform
+from scipy.stats import spearmanr
 import keras
 from sklearn.preprocessing import StandardScaler
 
@@ -27,7 +28,7 @@ class SymbolicRegressionFitness:
         self.evaluations = self.evaluations + 1
         individual.objectives = []
 
-        if self.fitness == "manifold_fitness_absolute" or self.fitness == "manifold_fitness_rank":
+        if "manifold_fitness" in self.fitness:
             obj1 = self.stress_cost(individual, 64)
         elif self.fitness == "neural_decoder_fitness":
             obj1 = self.neural_decoder_fitness(individual, self.evaluations)
@@ -99,29 +100,26 @@ class SymbolicRegressionFitness:
 
         if self.fitness == "manifold_fitness_absolute":
             fitness = np.sum(np.abs(similarity_matrix_batch - similarity_matrix_pred))
-        elif self.fitness == "manifold_fitness_rank":
-            count_end = 0
-            count_low = 0
+        elif self.fitness == "manifold_fitness_rank_footrule":
 
-            cost_list = []
-            for i in range(batch_size):
-                count_end += batch_size - (i + 1)
+            full_similirarity_matrix_org = squareform(similarity_matrix_batch)
+            full_similirarity_matrix_pred = squareform(similarity_matrix_pred)
 
-                distance_original = similarity_matrix_batch[count_low:count_end]
-                distances_lower_dim = similarity_matrix_pred[count_low:count_end]
+            ranks_true = np.argsort(full_similirarity_matrix_org, axis=1)
+            ranks_pred = np.argsort(full_similirarity_matrix_pred, axis=1)
 
-                arg_d_original = list(np.argsort(distance_original))
-                arg_d_lower_dim = list(np.argsort(distances_lower_dim))
+            fitness = np.sum(np.abs(ranks_true-ranks_pred))
 
-                cost = 0
-                for index in range(len(arg_d_original)):
-                    cost += np.abs(arg_d_original.index(index)-arg_d_lower_dim.index(index))
+        elif self.fitness == "manifold_fitness_rank_spearman":
 
-                count_low += batch_size - (i + 1)
+            full_similirarity_matrix_org = squareform(similarity_matrix_batch)
+            full_similirarity_matrix_pred = squareform(similarity_matrix_pred)
 
-                cost_list.append(cost)
+            fitness = 0
+            for index in range(batch_size):
+                fitness += spearmanr(full_similirarity_matrix_org[index], full_similirarity_matrix_pred[index])[0]*-1
 
-            fitness = np.sum(cost_list)
+            fitness /= batch_size
 
         return fitness
 

@@ -62,7 +62,8 @@ if __name__ == "__main__":
     num_of_runs = 1
     pop_size = 100
 
-    fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
+    fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank_footrule", "manifold_fitness_rank_spearman",
+                    "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
 
     for dataset in ["segmentation"]:
         for use_phi in [False]:
