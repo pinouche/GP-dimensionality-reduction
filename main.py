@@ -1,6 +1,7 @@
 import multiprocessing
 import pickle
 import os
+from sklearn.preprocessing import StandardScaler
 
 from autoencoder import get_hidden_layers
 from util import train_base_model
@@ -28,6 +29,11 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_m
     # test data
     test_data_x, test_data_y = data_x[int(data_x.shape[0] * split_proportion[0]):], data_y[int(data_x.shape[0] * split_proportion[0]):]
 
+    scaler = StandardScaler()
+    scaler = scaler.fit(train_data_x)
+    train_data_x = scaler.transform(train_data_x)
+    test_data_x = scaler.transform(test_data_x)
+
     # get the low dimensional representation of the data
     model = train_base_model(train_data_x, seed, num_latent_dimensions)
 
@@ -39,6 +45,7 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_m
 
     print("Computing for teacher")
     avg_acc, std_acc = k_fold_valifation_accuracy_rf(low_dim_test_x, test_data_y)
+    avg_reconstruction = model.evaluate(test_data_x.astype('float32'), test_data_x.astype('float32'), verbose=False)[0]
 
     print("Computing for method GP")
     if share_multi_tree is not None:
@@ -49,7 +56,7 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_m
         # here, front_last_generation is None
         info, front_last_generation = gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, use_phi, pop_size)
 
-    dic_one_run["original_data_accuracy"] = org_avg_acc
+    dic_one_run["original_data_accuracy"] = (org_avg_acc, avg_reconstruction)
     dic_one_run["teacher_accuracy"] = avg_acc
     dic_one_run["gp_info_generations"] = info
     dic_one_run["front_last_generation"] = front_last_generation
@@ -62,8 +69,8 @@ if __name__ == "__main__":
     num_of_runs = 1
     pop_size = 100
 
-    fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank_footrule", "manifold_fitness_rank_spearman",
-                    "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
+    fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank_spearman", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
+    # fitness_list = ["neural_decoder_fitness"]
 
     for dataset in ["segmentation"]:
         for use_phi in [False]:
@@ -78,7 +85,7 @@ if __name__ == "__main__":
                     elif not stacked_gp and fitness == "gp_autoencoder_fitness":
                         list_gp_method = [True]  # for gp-autoencoder fitness, we want to use the shared multi-tree GP representation
                     elif not stacked_gp and fitness == "autoencoder_teacher_fitness":  # we only want vanilla GP when using teacher model
-                        list_gp_method = [None, False, True]
+                        list_gp_method = [None, False]
                     else:
                         list_gp_method = [False]
 

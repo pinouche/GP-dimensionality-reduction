@@ -1,12 +1,7 @@
 import keras
-from sklearn.preprocessing import StandardScaler
 
 
 def get_hidden_layers(model, data_x):
-
-    scaler = StandardScaler()
-    scaler.fit(data_x)
-    data_x = scaler.transform(data_x)
 
     def keras_function_layer(model_layer, data):
         hidden_func = keras.backend.function(model.layers[0].input, model_layer.output)

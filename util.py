@@ -1,29 +1,12 @@
 import numpy as np
-import matplotlib.pyplot as plt
+from operator import itemgetter
 
 from sklearn.model_selection import KFold
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import StandardScaler
 
-from operator import itemgetter
-
 from autoencoder import nn_autoencoder
-
-
-# plot the lower-dimensional representation
-def plot_low_dim(low_dim_representation, data_y, name=None):
-    colors = np.array(["darkgray", "pink", "darkgreen", "darkblue", "darkorange", "firebrick", "black"])
-
-    # only plot for datasets that have at most 7 classes (otherwise it's hard to visualize)
-    if len(np.unique(data_y)) <= len(colors):
-        plt.figure(figsize=(5, 5))
-        plt.scatter(low_dim_representation[:,0], low_dim_representation[:,1], c=colors[data_y], s=10)
-        plt.xlabel("First dimension", fontsize=16)
-        plt.ylabel("Second dimension", fontsize=16)
-        plt.grid()
-        #plt.savefig(name + ".pdf", dpi=600, bbox_inches='tight')
-        plt.show()
 
 
 def k_fold_valifation_accuracy_rf(data_x, data_y, n_splits=5):
@@ -73,9 +56,6 @@ def compute_pareto(data):
 
 
 def train_base_model(x_data, seed, low_dim=2):
-    scaler = StandardScaler()
-    scaler = scaler.fit(x_data)
-    x_data = scaler.transform(x_data)
 
     est = nn_autoencoder(seed, x_data.shape[1], low_dim)
     est.fit(x_data, x_data, batch_size=32, epochs=200, verbose=0)

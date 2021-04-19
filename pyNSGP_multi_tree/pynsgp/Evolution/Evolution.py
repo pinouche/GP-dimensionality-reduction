@@ -333,6 +333,27 @@ class pyNSGP:
             rank_counter += 1
             current_front = next_front
 
+        already_seen = set()
+        discard_front = []
+        for p in population:
+            representation = p.GetHumanExpression()
+            if representation not in already_seen:
+                already_seen.add(representation)
+            else:
+                # p must be a duplicate then
+                # find where p is, remove it from the front it was assigned to, give it a bad rank
+                for i, q in enumerate(nondominated_fronts[p.rank]):
+                    if nondominated_fronts[p.rank][i] == p:
+                        nondominated_fronts[p.rank].pop(i)
+                        break
+                p.rank = np.inf
+                discard_front.append(p)
+        # put front with duplicates at the end of the list (it will be considered only if the cumulative size of the previous fronts < pop.size)
+        if len(discard_front) > 0:
+            nondominated_fronts.append(discard_front)
+            # filter out fronts that became empty
+            nondominated_fronts = [front for front in nondominated_fronts if len(front) > 0]
+
         return nondominated_fronts
 
     def ComputeCrowdingDistances(self, front):
@@ -471,9 +492,11 @@ class pyNSGP:
 
         model = keras.models.Sequential([
 
-            # latent_layer
+            keras.layers.Dense(int((input_size + latent_size) / 4), activation="elu", use_bias=True,
+                               trainable=True, kernel_initializer=initializer),
+
             keras.layers.Dense(int((input_size + latent_size) / 2), activation="elu", use_bias=True,
-                               trainable=True, kernel_initializer=initializer, input_shape=(latent_size,)),
+                               trainable=True, kernel_initializer=initializer),
 
             keras.layers.Dense(input_size, activation=keras.activations.linear, use_bias=False,
                                trainable=True, kernel_initializer=initializer)
