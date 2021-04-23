@@ -30,7 +30,7 @@ class pyNSGPEstimator(BaseEstimator, RegressorMixin):
                  tournament_size=4,
                  max_tree_size=100,
                  use_linear_scaling=True,
-                 use_interpretability_model=False,
+                 second_objective="length",
                  fitness="autoencoder_teacher_fitness",
                  verbose=False,
                  use_multi_tree=False,
@@ -44,7 +44,7 @@ class pyNSGPEstimator(BaseEstimator, RegressorMixin):
 
     def fit(self, X, y):
 
-        fitness_function = SymbolicRegressionFitness(X, y, self.use_linear_scaling, use_interpretability_model=self.use_interpretability_model,
+        fitness_function = SymbolicRegressionFitness(X, y, self.use_linear_scaling, second_objective=self.second_objective,
                                                      fitness=self.fitness)
 
         terminals = []

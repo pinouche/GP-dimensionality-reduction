@@ -7,7 +7,7 @@ import keras
 from util import k_fold_valifation_accuracy_rf
 
 
-def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, share_multi_tree, use_interpretability_model=False,
+def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, share_multi_tree, second_objective="length",
                                   fitness="autoencoder_teacher_fitness", stacked_gp=False, pop_size=100):
 
     scaler = StandardScaler()
@@ -19,7 +19,7 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
         for layer in range(1):
             print("COMPUTING FOR LAYER: " + str(layer))
             building_blocks_train, building_blocks_test = get_building_blocks(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y,
-                                                                              use_interpretability_model,
+                                                                              second_objective,
                                                                               fitness, pop_size)
 
             for index in range(building_blocks_train.shape[0]):
@@ -49,7 +49,7 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
                      pop_size=pop_size, max_generations=2, verbose=True, max_tree_size=100,
                      crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=1,
                      initialization_max_tree_height=init_max_tree_height, tournament_size=2, use_linear_scaling=use_linear_scaling,
-                     use_erc=False, use_interpretability_model=use_interpretability_model,
+                     use_erc=False, second_objective=second_objective,
                      functions=[AddNode(), SubNode(), MulNode(), DivNode()],
                      use_multi_tree=True,
                      fitness=fitness,
@@ -66,7 +66,7 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
     return info, front_information
 
 
-def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, use_interpretability_model=False, pop_size=100):
+def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, second_objective="length", pop_size=100):
 
     scaler = StandardScaler()
     scaler.fit(train_data_x)
@@ -89,7 +89,7 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
                          pop_size=pop_size, max_generations=num_generations, verbose=True, max_tree_size=100,
                          crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=1,
                          initialization_max_tree_height=7, tournament_size=2, use_linear_scaling=True,
-                         use_erc=False, use_interpretability_model=use_interpretability_model,
+                         use_erc=False, second_objective=second_objective,
                          functions=[AddNode(), SubNode(), MulNode(), DivNode()],
                          fitness="autoencoder_teacher_fitness",
                          use_multi_tree=False)
@@ -127,7 +127,7 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
     return info, None
 
 
-def get_building_blocks(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, use_interpretability_model=False,
+def get_building_blocks(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, second_objective="length",
                         fitness="autoencoder_teacher_fitness", pop_size=100):
 
     num_sub_functions = 0
@@ -141,7 +141,7 @@ def get_building_blocks(train_data_x, low_dim_x, train_data_y, test_data_x, test
                      pop_size=pop_size, max_generations=2, verbose=True, max_tree_size=100,
                      crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
                      initialization_max_tree_height=3, tournament_size=2, use_linear_scaling=use_linear_scaling,
-                     use_erc=False, use_interpretability_model=use_interpretability_model,
+                     use_erc=False, second_objective=second_objective,
                      functions=[AddNode(), SubNode(), MulNode(), DivNode()],
                      use_multi_tree=True,
                      fitness=fitness,

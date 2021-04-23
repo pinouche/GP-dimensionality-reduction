@@ -12,7 +12,7 @@ from load_data import load_data
 from load_data import shuffle_data
 
 
-def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_multi_tree=False, use_phi=False, fitness="autoencoder_teacher_fitness",
+def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_multi_tree=False, second_objective="length", fitness="autoencoder_teacher_fitness",
                      stacked_gp=False, pop_size=100):
     print("COMPUTING FOR RUN NUMBER: " + str(seed))
 
@@ -50,11 +50,11 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions=2, share_m
     print("Computing for method GP")
     if share_multi_tree is not None:
         info, front_last_generation = multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y,
-                                                                    share_multi_tree, use_phi, fitness,
+                                                                    share_multi_tree, second_objective, fitness,
                                                                     stacked_gp, pop_size)
     else:
         # here, front_last_generation is None
-        info, front_last_generation = gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, use_phi, pop_size)
+        info, front_last_generation = gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, second_objective, pop_size)
 
     dic_one_run["original_data_accuracy"] = (org_avg_acc, avg_reconstruction)
     dic_one_run["teacher_accuracy"] = avg_acc
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     # fitness_list = ["neural_decoder_fitness"]
 
     for dataset in ["segmentation"]:
-        for use_phi in [False]:
+        for second_objective in ["orthogonality"]:
             for stacked_gp in [False]:
                 for fitness in fitness_list:
 
@@ -108,7 +108,7 @@ if __name__ == "__main__":
 
                                 p = [multiprocessing.Process(target=low_dim_accuracy,
                                                              args=(dataset, seed, return_dict, num_latent_dimensions, gp_method,
-                                                                   use_phi, fitness, stacked_gp, pop_size))
+                                                                   second_objective, fitness, stacked_gp, pop_size))
                                      for seed in range(num_of_runs)]
 
                                 for proc in p:
@@ -133,12 +133,7 @@ if __name__ == "__main__":
                                 if stacked_gp:
                                     file_name = file_name + "_stacked"
 
-                                file_name = file_name + "_" + fitness
-
-                                if use_phi:
-                                    file_name = file_name + "_phi"
-                                else:
-                                    file_name = file_name + "_len"
+                                file_name = file_name + "_" + fitness + "_" + second_objective
 
                                 file_name = file_name + "_pop=" + str(pop_size)
 

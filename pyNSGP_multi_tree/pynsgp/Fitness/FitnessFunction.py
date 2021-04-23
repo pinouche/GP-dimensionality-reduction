@@ -12,13 +12,13 @@ from pynsgp.Nodes.MultiTreeRepresentation import MultiTreeIndividual
 
 class SymbolicRegressionFitness:
 
-    def __init__(self, X_train, y_train, use_linear_scaling=True, use_interpretability_model=False,
+    def __init__(self, X_train, y_train, use_linear_scaling=True, second_objective="length",
                  fitness="autoencoder_teacher_fitness"):
 
         self.X_train = X_train
         self.y_train = y_train
         self.use_linear_scaling = use_linear_scaling
-        self.use_interpretability_model = use_interpretability_model
+        self.second_objective = second_objective
         self.fitness = fitness
         self.elite = None
         self.evaluations = 0
@@ -37,10 +37,13 @@ class SymbolicRegressionFitness:
 
         individual.objectives.append(obj1)
 
-        if self.use_interpretability_model:
-            obj2 = self.EvaluatePHIsModel(individual)
-        else:
+        if self.second_objective == "length":
             obj2 = self.EvaluateLength(individual)
+        elif self.second_objective == "phi_model":
+            obj2 = self.EvaluatePHIsModel(individual)
+        elif self.second_objective == "orthogonality":
+            # obj2 = self.compute_orthogonality(individual)
+            obj2 = 1
         individual.objectives.append(obj2)
 
         if not self.elite or individual.objectives[0] < self.elite.objectives[0]:
