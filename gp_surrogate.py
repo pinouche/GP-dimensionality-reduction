@@ -47,7 +47,7 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
 
     estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y,
                      pop_size=pop_size, max_generations=100, verbose=True, max_tree_size=100,
-                     crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
+                     crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=1,
                      initialization_max_tree_height=init_max_tree_height, tournament_size=2, use_linear_scaling=use_linear_scaling,
                      use_erc=erc, second_objective=second_objective,
                      functions=[AddNode(), SubNode(), MulNode(), DivNode()],
@@ -85,7 +85,7 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
 
         estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y,
                          pop_size=pop_size, max_generations=100, verbose=True, max_tree_size=100,
-                         crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
+                         crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=1,
                          initialization_max_tree_height=7, tournament_size=2, use_linear_scaling=True,
                          use_erc=erc, second_objective=second_objective,
                          functions=[AddNode(), SubNode(), MulNode(), DivNode()],

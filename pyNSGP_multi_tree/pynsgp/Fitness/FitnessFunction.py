@@ -140,9 +140,11 @@ class SymbolicRegressionFitness:
 
         model = keras.models.Sequential([
 
+            keras.layers.Dense(int((input_size + latent_size) / 4), activation="elu", use_bias=True,
+                               trainable=True, kernel_initializer=initializer, input_shape=(latent_size,)),
             # latent_layer
             keras.layers.Dense(int((input_size + latent_size) / 2), activation="elu", use_bias=True,
-                               trainable=True, kernel_initializer=initializer, input_shape=(latent_size,)),
+                               trainable=True, kernel_initializer=initializer),
 
             keras.layers.Dense(input_size, activation=keras.activations.linear, use_bias=False,
                                trainable=True, kernel_initializer=initializer)
