@@ -31,7 +31,7 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
         init_max_tree_height = 3
         num_sub_functions = np.sqrt(train_data_x.shape[1])+1
     elif share_multi_tree and fitness == "gp_autoencoder_fitness":
-        init_max_tree_height = 3
+        init_max_tree_height = 7
         num_sub_functions = low_dim_x.shape[1]
     elif stacked_gp:
         init_max_tree_height = 3
@@ -47,7 +47,7 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
 
     estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y,
                      pop_size=pop_size, max_generations=100, verbose=True, max_tree_size=100,
-                     crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=1,
+                     crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
                      initialization_max_tree_height=init_max_tree_height, tournament_size=2, use_linear_scaling=use_linear_scaling,
                      use_erc=erc, second_objective=second_objective,
                      functions=[AddNode(), SubNode(), MulNode(), DivNode()],
@@ -73,21 +73,19 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
     train_data_x = scaler.transform(train_data_x)
     test_data_x = scaler.transform(test_data_x)
 
-    num_generations = 100
-
     num_latent_dimensions = low_dim_x.shape[1]
     num_sample_train = train_data_x.shape[0]
     num_sample_test = test_data_x.shape[0]
 
-    low_dim_train_array = np.empty((num_generations, num_latent_dimensions, num_sample_train))
-    low_dim_test_array = np.empty((num_generations, num_latent_dimensions, num_sample_test))
+    low_dim_train_array = np.empty((100, num_latent_dimensions, num_sample_train))
+    low_dim_test_array = np.empty((100, num_latent_dimensions, num_sample_test))
     individuals = [[] for _ in range(num_latent_dimensions)]
 
     for index in range(num_latent_dimensions):
 
         estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y,
-                         pop_size=pop_size, max_generations=num_generations, verbose=True, max_tree_size=100,
-                         crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=1,
+                         pop_size=pop_size, max_generations=100, verbose=True, max_tree_size=100,
+                         crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
                          initialization_max_tree_height=7, tournament_size=2, use_linear_scaling=True,
                          use_erc=erc, second_objective=second_objective,
                          functions=[AddNode(), SubNode(), MulNode(), DivNode()],

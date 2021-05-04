@@ -56,8 +56,8 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, share_mul
         # here, front_last_generation is None
         info, front_last_generation = gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, second_objective, pop_size, erc)
 
-    dic_one_run["original_data_accuracy"] = (org_avg_acc, avg_reconstruction)
-    dic_one_run["teacher_accuracy"] = avg_acc
+    dic_one_run["original_data_accuracy"] = org_avg_acc
+    dic_one_run["teacher_accuracy"] = (avg_acc, avg_reconstruction)
     dic_one_run["gp_info_generations"] = info
     dic_one_run["front_last_generation"] = front_last_generation
 
@@ -66,16 +66,16 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, share_mul
 
 if __name__ == "__main__":
 
-    num_of_runs = 30
+    num_of_runs = 1
     pop_size = 200
 
-    fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank_spearman", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
+    # fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank_spearman", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
     # fitness_list = ["neural_decoder_fitness"]
-    # fitness_list = ["manifold_fitness_rank_spearman"]
+    fitness_list = ["manifold_fitness_rank_spearman"]
 
     for dataset in ["segmentation"]:
         for second_objective in ["length"]:
-            for erc in ["True"]:
+            for erc in [True]:
                 for stacked_gp in [False]:
                     for fitness in fitness_list:
 
@@ -103,7 +103,7 @@ if __name__ == "__main__":
                                 if gp_method is not False and stacked_gp:
                                     raise ValueError("we want to to use non-shared multi-tree with stacked GP (stacked GP is already shared)")
 
-                                for num_latent_dimensions in [1, 2]:
+                                for num_latent_dimensions in [2]:
 
                                     manager = multiprocessing.Manager()
                                     return_dict = manager.dict()
@@ -139,6 +139,6 @@ if __name__ == "__main__":
 
                                     file_name = file_name + "_pop=" + str(pop_size)
 
-                                    file_name = file_name + "_erc=" + erc
+                                    file_name = file_name + "_erc=" + str(erc)
 
                                     pickle.dump(results, open(file_name + ".p", "wb"))

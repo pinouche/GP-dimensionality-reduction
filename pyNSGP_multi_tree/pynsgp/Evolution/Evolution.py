@@ -260,16 +260,13 @@ class pyNSGP:
 
             # compute information from the champion HERE
             if self.use_multi_tree:
-                front_non_duplicate = self.get_non_duplicate_front(self.latest_front)
-                accuracy_champ_train, len_champ_train, tree_champ, x_low_train = self.get_information_from_front(front_non_duplicate,
-                                                                                                                 self.x_train,
-                                                                                                                 self.y_train)
-                accuracy_champ_test, len_champ_test, tree_champ, x_low_test = self.get_information_from_front(front_non_duplicate,
-                                                                                                              self.x_test,
-                                                                                                              self.y_test)
+                elite = self.fitness_function.elite
+                accuracy_champ_train, len_champ_train, tree_champ, x_low_train = self.get_information_from_front([elite], self.x_train, self.y_train)
+                accuracy_champ_test, len_champ_test, tree_champ, x_low_test = self.get_information_from_front([elite], self.x_test, self.y_test)
 
                 reconstruction_train_loss, reconstruction_test_loss = self.neural_decoder_fitness(x_low_train, x_low_test)
 
+                print("METRICS: ", accuracy_champ_test, reconstruction_test_loss)
                 list_info[0].append((accuracy_champ_train, reconstruction_train_loss, len_champ_train, tree_champ))
                 list_info[1].append((accuracy_champ_test, reconstruction_test_loss, len_champ_train, tree_champ))
 
@@ -429,16 +426,6 @@ class pyNSGP:
     def get_information_from_front(self, front, x, y):
 
         low_dim, individuals, len_programs, fitness_list = self.gp_multi_tree_output(front, x)
-
-        # get the indices sorted by the first objective
-        indice_array = np.arange(0, len(fitness_list), 1)
-        zipped_list = list(zip(fitness_list, indice_array))
-        zipped_list.sort()
-        indices = [val[1] for val in zipped_list]
-        # reorder
-        low_dim = low_dim[indices]
-        len_programs = len_programs[indices]
-        individuals = individuals[indices]
 
         # only want information from the champion
         x_low = low_dim[0]

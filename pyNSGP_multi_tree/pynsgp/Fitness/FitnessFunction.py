@@ -2,7 +2,7 @@ import numpy as np
 from copy import deepcopy
 import random
 from scipy.spatial.distance import pdist, squareform
-from scipy.stats import spearmanr
+from scipy.stats import spearmanr, kendalltau
 import keras
 from sklearn.preprocessing import StandardScaler
 
@@ -120,7 +120,7 @@ class SymbolicRegressionFitness:
 
             fitness = 0
             for index in range(batch_size):
-                fitness += spearmanr(full_similirarity_matrix_org[index], full_similirarity_matrix_pred[index])[0]*-1
+                fitness += kendalltau(full_similirarity_matrix_org[index], full_similirarity_matrix_pred[index])[0]*-1
 
             fitness /= batch_size
 
