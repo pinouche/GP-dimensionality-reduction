@@ -175,14 +175,15 @@ class pyNSGP:
 
                         tot_num_components = o.num_sub_functions + o.num_sup_functions
                         for i in range(o.num_sub_functions):
-                            if random() < self.crossover_rate / tot_num_components:
-                                o.sub_functions[i] = Variation.SubtreeCrossover(o.sub_functions[i], selected[randint(self.pop_size)].sub_functions[i])
+                            j = randint(o.num_sub_functions)
+                            if random() < self.crossover_rate / o.num_sub_functions:
+                                o.sub_functions[i] = Variation.SubtreeCrossover(o.sub_functions[i], selected[randint(self.pop_size)].sub_functions[j])
                                 variation_event_happened = True
-                            elif random() < self.mutation_rate / tot_num_components:
+                            elif random() < self.mutation_rate / o.num_sub_functions:
                                 o.sub_functions[i] = Variation.SubtreeMutation(o.sub_functions[i], self.functions, self.terminals,
                                                                                max_height=self.initialization_max_tree_height)
                                 variation_event_happened = True
-                            elif random() < self.op_mutation_rate / tot_num_components:
+                            elif random() < self.op_mutation_rate / o.num_sub_functions:
                                 o.sub_functions[i] = Variation.OnePointMutation(o.sub_functions[i], self.functions, self.terminals)
                                 variation_event_happened = True
 
@@ -190,15 +191,16 @@ class pyNSGP:
                             if (len(o.sub_functions[i].GetSubtree()) > self.max_tree_size) or (o.sub_functions[i].GetHeight() < self.min_depth):
                                 o.sub_functions[i] = deepcopy(selected[i].sub_functions[i])
 
+                        # for the sup functions, we want each head/function to represent the same output dimension
                         for i in range(o.num_sup_functions):
-                            if random() < self.crossover_rate / tot_num_components:
+                            if random() < self.crossover_rate / o.num_sup_functions:
                                 o.sup_functions[i] = Variation.SubtreeCrossover(o.sup_functions[i], selected[randint(self.pop_size)].sup_functions[i])
                                 variation_event_happened = True
-                            elif random() < self.mutation_rate / tot_num_components:
+                            elif random() < self.mutation_rate / o.num_sup_functions:
                                 o.sup_functions[i] = Variation.SubtreeMutation(o.sup_functions[i], self.functions, self.supfun_terminals,
                                                                                max_height=self.initialization_max_tree_height)
                                 variation_event_happened = True
-                            elif random() < self.op_mutation_rate / tot_num_components:
+                            elif random() < self.op_mutation_rate / o.num_sup_functions:
                                 o.sup_functions[i] = Variation.OnePointMutation(o.sup_functions[i], self.functions, self.supfun_terminals)
                                 variation_event_happened = True
 
@@ -266,9 +268,11 @@ class pyNSGP:
 
                 reconstruction_train_loss, reconstruction_test_loss = self.neural_decoder_fitness(x_low_train, x_low_test)
 
-                print("METRICS: ", accuracy_champ_test, reconstruction_test_loss)
-                list_info[0].append((accuracy_champ_train, reconstruction_train_loss, len_champ_train, tree_champ))
-                list_info[1].append((accuracy_champ_test, reconstruction_test_loss, len_champ_train, tree_champ))
+                print("METRICS: ", accuracy_champ_train, accuracy_champ_test, reconstruction_train_loss, reconstruction_test_loss)
+                list_info[0].append((self.fitness_function.elite.objectives[0], accuracy_champ_train, reconstruction_train_loss, len_champ_train,
+                                     tree_champ))
+                list_info[1].append((self.fitness_function.elite.objectives[0], accuracy_champ_test, reconstruction_test_loss, len_champ_train,
+                                     tree_champ))
 
                 if self.generations == self.max_generations - 1:
                     front_non_duplicate = self.get_non_duplicate_front(self.latest_front)

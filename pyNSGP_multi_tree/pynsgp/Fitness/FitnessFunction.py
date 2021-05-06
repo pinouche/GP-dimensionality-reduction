@@ -29,7 +29,7 @@ class SymbolicRegressionFitness:
         individual.objectives = []
 
         if "manifold_fitness" in self.fitness:
-            obj1 = self.stress_cost(individual, 64)
+            obj1 = self.stress_cost(individual, 128)
         elif self.fitness == "neural_decoder_fitness":
             obj1 = self.neural_decoder_fitness(individual, self.evaluations)
         elif self.fitness == "autoencoder_teacher_fitness" or self.fitness == "gp_autoencoder_fitness":
@@ -86,7 +86,7 @@ class SymbolicRegressionFitness:
         return fit_error
 
     # fitness function to directly evolve trees to do dimensionality reduction
-    def stress_cost(self, individual, batch_size=64):
+    def stress_cost(self, individual, batch_size=128):
 
         assert batch_size <= self.X_train.shape[0]
 

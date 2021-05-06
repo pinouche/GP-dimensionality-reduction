@@ -141,4 +141,4 @@ if __name__ == "__main__":
 
                                     file_name = file_name + "_erc=" + str(erc)
 
-                                    pickle.dump(results, open(file_name + ".p", "wb"))
+                                    #pickle.dump(results, open(file_name + ".p", "wb"))

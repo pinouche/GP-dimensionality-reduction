@@ -2,7 +2,8 @@ import numpy as np
 from copy import deepcopy
 from numpy.random import randint
 
-def TournamentSelect( population, how_many_to_select, tournament_size=4 ):
+
+def TournamentSelect(population, how_many_to_select, tournament_size=4):
 	pop_size = len(population)
 	selection = []
 
