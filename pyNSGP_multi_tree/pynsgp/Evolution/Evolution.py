@@ -166,6 +166,10 @@ class pyNSGP:
             for i in range(self.pop_size):
 
                 o = deepcopy(selected[i])
+                # evaluate parent
+                self.fitness_function.Evaluate(selected[i])
+                objective_one_parent = selected[i].objectives[0]
+
                 variation_event_happened = False
 
                 # variation of multi trees
@@ -173,11 +177,11 @@ class pyNSGP:
 
                     while not variation_event_happened:
 
-                        tot_num_components = o.num_sub_functions + o.num_sup_functions
+                        # tot_num_components = o.num_sub_functions + o.num_sup_functions
                         for i in range(o.num_sub_functions):
-                            j = randint(o.num_sub_functions)
+                            # j = randint(o.num_sub_functions)
                             if random() < self.crossover_rate / o.num_sub_functions:
-                                o.sub_functions[i] = Variation.SubtreeCrossover(o.sub_functions[i], selected[randint(self.pop_size)].sub_functions[j])
+                                o.sub_functions[i] = Variation.SubtreeCrossover(o.sub_functions[i], selected[randint(self.pop_size)].sub_functions[i])
                                 variation_event_happened = True
                             elif random() < self.mutation_rate / o.num_sub_functions:
                                 o.sub_functions[i] = Variation.SubtreeMutation(o.sub_functions[i], self.functions, self.terminals,
@@ -207,7 +211,9 @@ class pyNSGP:
                             # correct for violation of constraints
                             if (self.fitness_function.EvaluateLength(o) > self.max_tree_size) or (o.sup_functions[i].GetHeight() < self.min_depth):
                                 o.sup_functions[i] = deepcopy(selected[i].sup_functions[i])
+
                     self.fitness_function.Evaluate(o)
+                    objective_one_offspring = o.objectives[0]
 
                 # variation of normal individuals
                 else:
@@ -226,8 +232,16 @@ class pyNSGP:
                         o = deepcopy(selected[i])
                     else:
                         self.fitness_function.Evaluate(o)
+                        objective_one_offspring = o.objectives[0]
 
-                O.append(o)
+                fittest_individual = deepcopy(o)
+                print(objective_one_parent, objective_one_offspring)
+                if objective_one_parent < objective_one_offspring:
+                    fittest_individual = deepcopy(selected[i])
+
+                self.fitness_function.Evaluate(fittest_individual)
+
+                O.append(fittest_individual)
 
             PO = self.population + O
 
