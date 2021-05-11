@@ -120,7 +120,10 @@ class SymbolicRegressionFitness:
 
             fitness = 0
             for index in range(batch_size):
-                fitness += kendalltau(full_similirarity_matrix_org[index], full_similirarity_matrix_pred[index])[0]*-1
+                corr = kendalltau(full_similirarity_matrix_org[index], full_similirarity_matrix_pred[index])[0]*-1
+                if np.isnan(corr):
+                    corr = 1
+                fitness += corr
 
             fitness /= batch_size
 
