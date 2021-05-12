@@ -34,6 +34,7 @@ class pyNSGPEstimator(BaseEstimator, RegressorMixin):
                  fitness="autoencoder_teacher_fitness",
                  verbose=False,
                  use_multi_tree=False,
+                 multi_objective=False,
                  num_sub_functions=4
                  ):
 
@@ -77,6 +78,7 @@ class pyNSGPEstimator(BaseEstimator, RegressorMixin):
                       max_tree_size=self.max_tree_size,
                       tournament_size=self.tournament_size,
                       use_multi_tree=self.use_multi_tree,
+                      multi_objective=self.multi_objective,
                       num_sub_functions=self.num_sub_functions,
                       num_sup_functions=self.num_sup_functions,
                       verbose=self.verbose

@@ -4,7 +4,7 @@ from numpy.random import randint
 from numpy.random import random
 
 
-def GenerateRandomTree(functions, terminals, max_height, curr_height=0, method='grow', min_depth=2):
+def GenerateRandomTree(functions, terminals, max_height, curr_height=0, method='grow', min_depth=1):
     if curr_height == max_height:
         idx = randint(len(terminals))
         n = deepcopy(terminals[idx])
@@ -86,9 +86,6 @@ def SubtreeCrossover(individual, donor):
 
     nodes1 = individual.GetSubtree()
     nodes2 = donor.GetSubtree()  # no need to deep copy all nodes of parent2
-
-    # nodes1 = __GetCandidateNodesAtUniformRandomDepth( nodes1 )
-    # nodes2 = __GetCandidateNodesAtUniformRandomDepth( nodes2 )
 
     to_swap1 = nodes1[randint(len(nodes1))]
     to_swap2 = deepcopy(nodes2[randint(len(nodes2))])  # we deep copy now, only the sutbree from parent2

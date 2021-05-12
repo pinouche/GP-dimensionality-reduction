@@ -8,7 +8,7 @@ from util import k_fold_valifation_accuracy_rf
 
 
 def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, share_multi_tree, second_objective="length",
-                                  fitness="autoencoder_teacher_fitness", stacked_gp=False, pop_size=100, erc=False):
+                                  fitness="autoencoder_teacher_fitness", stacked_gp=False, pop_size=100, erc=False, multi_objective=False):
 
     scaler = StandardScaler()
     scaler.fit(train_data_x)
@@ -52,6 +52,7 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
                      use_erc=erc, second_objective=second_objective,
                      functions=[AddNode(), SubNode(), MulNode(), DivNode()],
                      use_multi_tree=True,
+                     multi_objective=False,
                      fitness=fitness,
                      num_sub_functions=num_sub_functions)
 
@@ -66,7 +67,8 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
     return info, front_information
 
 
-def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, second_objective="length", pop_size=100, erc=False):
+def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, second_objective="length", pop_size=100, erc=False,
+                       multi_objective=False):
 
     scaler = StandardScaler()
     scaler.fit(train_data_x)
@@ -90,7 +92,7 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
                          use_erc=erc, second_objective=second_objective,
                          functions=[AddNode(), SubNode(), MulNode(), DivNode()],
                          fitness="autoencoder_teacher_fitness",
-                         use_multi_tree=False)
+                         use_multi_tree=False, multi_objective=False)
 
         estimator.fit(train_data_x, low_dim_x[:, index])
 
@@ -142,6 +144,7 @@ def get_building_blocks(train_data_x, low_dim_x, train_data_y, test_data_x, test
                      use_erc=False, second_objective=second_objective,
                      functions=[AddNode(), SubNode(), MulNode(), DivNode()],
                      use_multi_tree=True,
+                     multi_objective=False,
                      fitness=fitness,
                      num_sub_functions=num_sub_functions)
 

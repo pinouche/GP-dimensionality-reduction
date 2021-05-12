@@ -40,6 +40,7 @@ class pyNSGP:
         max_tree_size=100,
         tournament_size=4,
         use_multi_tree=False,
+        multi_objective=False,
         num_sub_functions=4,
         num_sup_functions=1,
         verbose=False
@@ -66,6 +67,7 @@ class pyNSGP:
         assert (min_depth <= initialization_max_tree_height)
         self.max_tree_size = max_tree_size
         self.tournament_size = tournament_size
+        self.multi_objective = multi_objective
 
         self.generations = 0
 
@@ -160,15 +162,12 @@ class pyNSGP:
 
         while not self.__ShouldTerminate():
 
-            selected = Selection.TournamentSelect(self.population, self.pop_size, tournament_size=self.tournament_size)
+            selected = Selection.TournamentSelect(self.population, self.pop_size, self.multi_objective, tournament_size=self.tournament_size)
 
             O = []
             for i in range(self.pop_size):
 
                 o = deepcopy(selected[i])
-                # evaluate parent
-                self.fitness_function.Evaluate(selected[i])
-                objective_one_parent = selected[i].objectives[0]
 
                 variation_event_happened = False
 
@@ -177,9 +176,7 @@ class pyNSGP:
 
                     while not variation_event_happened:
 
-                        # tot_num_components = o.num_sub_functions + o.num_sup_functions
                         for i in range(o.num_sub_functions):
-                            # j = randint(o.num_sub_functions)
                             if random() < self.crossover_rate / o.num_sub_functions:
                                 o.sub_functions[i] = Variation.SubtreeCrossover(o.sub_functions[i], selected[randint(self.pop_size)].sub_functions[i])
                                 variation_event_happened = True
@@ -213,7 +210,6 @@ class pyNSGP:
                                 o.sup_functions[i] = deepcopy(selected[i].sup_functions[i])
 
                     self.fitness_function.Evaluate(o)
-                    objective_one_offspring = o.objectives[0]
 
                 # variation of normal individuals
                 else:
@@ -232,42 +228,38 @@ class pyNSGP:
                         o = deepcopy(selected[i])
                     else:
                         self.fitness_function.Evaluate(o)
-                        objective_one_offspring = o.objectives[0]
 
-                fittest_individual = deepcopy(o)
-                print(objective_one_parent, objective_one_offspring)
-                if objective_one_parent < objective_one_offspring:
-                    fittest_individual = deepcopy(selected[i])
+                O.append(o)
 
-                self.fitness_function.Evaluate(fittest_individual)
+            if self.multi_objective:
+                PO = self.population + O
 
-                O.append(fittest_individual)
+                new_population = []
+                fronts = self.FastNonDominatedSorting(PO)
+                self.latest_front = deepcopy(fronts[0])
 
-            PO = self.population + O
+                curr_front_idx = 0
+                while curr_front_idx < len(fronts) and len(fronts[curr_front_idx]) + len(new_population) <= self.pop_size:
+                    self.ComputeCrowdingDistances(fronts[curr_front_idx])
+                    for p in fronts[curr_front_idx]:
+                        new_population.append(p)
+                    curr_front_idx += 1
 
-            new_population = []
-            fronts = self.FastNonDominatedSorting(PO)
-            self.latest_front = deepcopy(fronts[0])
+                if len(new_population) < self.pop_size:
+                    # fill in remaining
+                    self.ComputeCrowdingDistances(fronts[curr_front_idx])
+                    fronts[curr_front_idx].sort(key=lambda x: x.crowding_distance, reverse=True)
 
-            curr_front_idx = 0
-            while curr_front_idx < len(fronts) and len(fronts[curr_front_idx]) + len(new_population) <= self.pop_size:
-                self.ComputeCrowdingDistances(fronts[curr_front_idx])
-                for p in fronts[curr_front_idx]:
-                    new_population.append(p)
-                curr_front_idx += 1
+                    while len(fronts[curr_front_idx]) > 0 and len(new_population) < self.pop_size:
+                        new_population.append(fronts[curr_front_idx][0])  # pop first because they were sorted in desc order
+                        fronts[curr_front_idx].pop(0)
 
-            if len(new_population) < self.pop_size:
-                # fill in remaining
-                self.ComputeCrowdingDistances(fronts[curr_front_idx])
-                fronts[curr_front_idx].sort(key=lambda x: x.crowding_distance, reverse=True)
+                    # clean up leftovers
+                    while len(fronts[curr_front_idx]) > 0:
+                        del fronts[curr_front_idx][0]
 
-                while len(fronts[curr_front_idx]) > 0 and len(new_population) < self.pop_size:
-                    new_population.append(fronts[curr_front_idx][0])  # pop first because they were sorted in desc order
-                    fronts[curr_front_idx].pop(0)
-
-                # clean up leftovers
-                while len(fronts[curr_front_idx]) > 0:
-                    del fronts[curr_front_idx][0]
+            else:
+                new_population = deepcopy(O)
 
             if self.verbose:
                 print('g:', self.generations, 'elite obj1:', np.round(self.fitness_function.elite.objectives[0], 3),
