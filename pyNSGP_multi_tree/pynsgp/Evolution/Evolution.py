@@ -260,6 +260,7 @@ class pyNSGP:
 
             else:
                 new_population = deepcopy(O)
+                self.latest_front = new_population
 
             if self.verbose:
                 print('g:', self.generations, 'elite obj1:', np.round(self.fitness_function.elite.objectives[0], 3),
