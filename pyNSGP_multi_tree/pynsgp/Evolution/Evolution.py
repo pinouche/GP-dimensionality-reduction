@@ -270,10 +270,14 @@ class pyNSGP:
             # compute information from the champion HERE
             if self.use_multi_tree:
                 elite = self.fitness_function.elite
+
                 accuracy_champ_train, len_champ_train, tree_champ, x_low_train = self.get_information_from_front([elite], self.x_train, self.y_train)
                 accuracy_champ_test, len_champ_test, tree_champ, x_low_test = self.get_information_from_front([elite], self.x_test, self.y_test)
 
                 reconstruction_train_loss, reconstruction_test_loss = self.neural_decoder_fitness(x_low_train, x_low_test)
+
+                if tree_champ.num_sub_functions > 0:
+                    tree_champ = tree_champ.sub_functions
 
                 print("METRICS: ", accuracy_champ_train, accuracy_champ_test, reconstruction_train_loss, reconstruction_test_loss)
                 list_info[0].append((self.fitness_function.elite.objectives[0], accuracy_champ_train, reconstruction_train_loss, len_champ_train,
@@ -289,6 +293,9 @@ class pyNSGP:
                         accuracy_train, length, tree, x_low_train = self.get_information_from_front([individual], self.x_train, self.y_train)
                         accuracy_test, length, tree, x_low_test = self.get_information_from_front([individual], self.x_test, self.y_test)
                         reconstruction_train_loss, reconstruction_test_loss = self.neural_decoder_fitness(x_low_train, x_low_test)
+
+                        if tree.num_sub_functions > 0:
+                            tree = tree.sub_functions
 
                         front_information.append((accuracy_test, reconstruction_test_loss, length, tree))
 

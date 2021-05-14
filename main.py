@@ -75,7 +75,7 @@ if __name__ == "__main__":
 
     # fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank_spearman", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
     # fitness_list = ["neural_decoder_fitness"]
-    fitness_list = ["manifold_fitness_rank_spearman"]
+    fitness_list = ["gp_autoencoder_fitness"]
 
     for dataset in ["segmentation"]:
         for second_objective in ["length"]:
