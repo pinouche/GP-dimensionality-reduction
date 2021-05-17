@@ -12,8 +12,9 @@ from load_data import load_data
 from load_data import shuffle_data
 
 
-def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, share_multi_tree=False, second_objective="length",
-                     fitness="autoencoder_teacher_fitness", stacked_gp=False, pop_size=100, erc=False, multi_objective=False):
+def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators_rate, share_multi_tree=False, second_objective="length",
+                     fitness="autoencoder_teacher_fitness", stacked_gp=False, pop_size=100, erc=False, multi_objective=False,
+                     one_mutation_on_average=False):
 
     print("COMPUTING FOR RUN NUMBER: " + str(seed))
 
@@ -21,7 +22,6 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, share_mul
 
     # train and test
     split_proportion = [0.5, 0.5]
-
     data_x, data_y = load_data(dataset)
     data_x, data_y = shuffle_data(data_x, data_y, seed)
 
@@ -51,12 +51,14 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, share_mul
     print("Computing for method GP")
     if share_multi_tree is not None:
         info, front_last_generation = multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y,
+                                                                    operators_rate,
                                                                     share_multi_tree, second_objective, fitness,
-                                                                    stacked_gp, pop_size, erc, multi_objective)
+                                                                    stacked_gp, pop_size, erc, multi_objective, one_mutation_on_average)
     else:
         # here, front_last_generation is None
-        info, front_last_generation = gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, second_objective, pop_size,
-                                                         erc, multi_objective)
+        info, front_last_generation = gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, operators_rate,
+                                                         second_objective, pop_size,
+                                                         erc, multi_objective, one_mutation_on_average)
 
     dic_one_run["original_data_accuracy"] = org_avg_acc
     dic_one_run["teacher_accuracy"] = (avg_acc, avg_reconstruction)
@@ -69,13 +71,19 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, share_mul
 if __name__ == "__main__":
 
     multi_objective = False
+    one_mutation_on_average = True
+
+    crossover_rate = 0.8
+    op_mutation_rate = 0.1
+    mutation_rate = op_mutation_rate
+    operators_rate = (crossover_rate, op_mutation_rate, mutation_rate)
 
     num_of_runs = 1
     pop_size = 200
 
     # fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank_spearman", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
     # fitness_list = ["neural_decoder_fitness"]
-    fitness_list = ["gp_autoencoder_fitness"]
+    fitness_list = ["autoencoder_teacher_fitness"]
 
     for dataset in ["segmentation"]:
         for second_objective in ["length"]:
@@ -91,7 +99,8 @@ if __name__ == "__main__":
                         elif not stacked_gp and fitness == "gp_autoencoder_fitness":
                             list_gp_method = [True]  # for gp-autoencoder fitness, we want to use the shared multi-tree GP representation
                         elif not stacked_gp and fitness == "autoencoder_teacher_fitness":  # we only want vanilla GP when using teacher model
-                            list_gp_method = [None, False]
+                            # list_gp_method = [None, False]
+                            list_gp_method = [None]
                         else:
                             list_gp_method = [False]
 
@@ -113,8 +122,9 @@ if __name__ == "__main__":
                                     return_dict = manager.dict()
 
                                     p = [multiprocessing.Process(target=low_dim_accuracy,
-                                                                 args=(dataset, seed, return_dict, num_latent_dimensions, gp_method,
-                                                                 second_objective, fitness, stacked_gp, pop_size, erc, multi_objective))
+                                                                 args=(dataset, seed, return_dict, num_latent_dimensions, operators_rate, gp_method,
+                                                                 second_objective, fitness, stacked_gp, pop_size, erc, multi_objective,
+                                                                 one_mutation_on_average))
                                                                  for seed in range(num_of_runs)]
 
                                     for proc in p:

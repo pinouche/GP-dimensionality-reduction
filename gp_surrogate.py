@@ -7,8 +7,9 @@ import keras
 from util import k_fold_valifation_accuracy_rf
 
 
-def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, share_multi_tree, second_objective="length",
-                                  fitness="autoencoder_teacher_fitness", stacked_gp=False, pop_size=100, erc=False, multi_objective=False):
+def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, operators_rate, share_multi_tree,
+                                  second_objective="length", fitness="autoencoder_teacher_fitness", stacked_gp=False, pop_size=100, erc=False,
+                                  multi_objective=False, one_mutation_on_average=False):
 
     scaler = StandardScaler()
     scaler.fit(train_data_x)
@@ -46,15 +47,16 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
         use_linear_scaling = False
 
     estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y,
-                     pop_size=pop_size, max_generations=2, verbose=True, max_tree_size=100,
-                     crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=1,
+                     pop_size=pop_size, max_generations=10, verbose=True, max_tree_size=100,
+                     crossover_rate=operators_rate[0], mutation_rate=operators_rate[1], op_mutation_rate=operators_rate[2], min_depth=1,
                      initialization_max_tree_height=init_max_tree_height, tournament_size=2, use_linear_scaling=use_linear_scaling,
                      use_erc=erc, second_objective=second_objective,
                      functions=[AddNode(), SubNode(), MulNode(), DivNode()],
                      use_multi_tree=True,
                      multi_objective=multi_objective,
                      fitness=fitness,
-                     num_sub_functions=num_sub_functions)
+                     num_sub_functions=num_sub_functions,
+                     one_mutation_on_average=one_mutation_on_average)
 
     if fitness != "gp_autoencoder_fitness":
         estimator.fit(train_data_x, low_dim_x)
@@ -67,8 +69,8 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
     return info, front_information
 
 
-def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, second_objective="length", pop_size=100, erc=False,
-                       multi_objective=False):
+def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, operators_rate,
+                       second_objective="length", pop_size=100, erc=False, multi_objective=False, one_mutation_on_average=False):
 
     scaler = StandardScaler()
     scaler.fit(train_data_x)
@@ -79,20 +81,22 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
     num_sample_train = train_data_x.shape[0]
     num_sample_test = test_data_x.shape[0]
 
-    low_dim_train_array = np.empty((100, num_latent_dimensions, num_sample_train))
-    low_dim_test_array = np.empty((100, num_latent_dimensions, num_sample_test))
+    generations = 100
+    low_dim_train_array = np.empty((generations, num_latent_dimensions, num_sample_train))
+    low_dim_test_array = np.empty((generations, num_latent_dimensions, num_sample_test))
     individuals = [[] for _ in range(num_latent_dimensions)]
 
     for index in range(num_latent_dimensions):
 
         estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y,
-                         pop_size=pop_size, max_generations=2, verbose=True, max_tree_size=100,
-                         crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=1,
+                         pop_size=pop_size, max_generations=generations, verbose=True, max_tree_size=100,
+                         crossover_rate=operators_rate[0], mutation_rate=operators_rate[1], op_mutation_rate=operators_rate[2], min_depth=1,
                          initialization_max_tree_height=7, tournament_size=2, use_linear_scaling=True,
                          use_erc=erc, second_objective=second_objective,
                          functions=[AddNode(), SubNode(), MulNode(), DivNode()],
                          fitness="autoencoder_teacher_fitness",
-                         use_multi_tree=False, multi_objective=multi_objective)
+                         use_multi_tree=False, multi_objective=multi_objective,
+                         one_mutation_on_average=one_mutation_on_average)
 
         estimator.fit(train_data_x, low_dim_x[:, index])
 
@@ -120,6 +124,8 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
         avg_acc_test, _ = k_fold_valifation_accuracy_rf(x_test_low, test_data_y)
 
         train_reconstrution_loss, test_reconstruction_loss = neural_decoder_fitness(x_train_low, x_test_low, train_data_x, test_data_x)
+
+        print("METRICS:", avg_acc_train, avg_acc_test, train_reconstrution_loss, test_reconstruction_loss)
 
         info[0].append((avg_acc_train, train_reconstrution_loss, summed_length[index], np.transpose(individuals)[index]))
         info[1].append((avg_acc_test, test_reconstruction_loss, summed_length[index], np.transpose(individuals)[index]))

@@ -35,7 +35,8 @@ class pyNSGPEstimator(BaseEstimator, RegressorMixin):
                  verbose=False,
                  use_multi_tree=False,
                  multi_objective=False,
-                 num_sub_functions=4
+                 num_sub_functions=4,
+                 one_mutation_on_average=False
                  ):
 
         args, _, _, values = inspect.getargvalues(inspect.currentframe())
@@ -81,6 +82,7 @@ class pyNSGPEstimator(BaseEstimator, RegressorMixin):
                       multi_objective=self.multi_objective,
                       num_sub_functions=self.num_sub_functions,
                       num_sup_functions=self.num_sup_functions,
+                      one_mutation_on_average=self.one_mutation_on_average,
                       verbose=self.verbose
                       )
 

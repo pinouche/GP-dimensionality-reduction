@@ -43,6 +43,7 @@ class pyNSGP:
         multi_objective=False,
         num_sub_functions=4,
         num_sup_functions=1,
+        one_mutation_on_average=False,
         verbose=False
     ):
         self.x_train = x_train
@@ -68,6 +69,7 @@ class pyNSGP:
         self.max_tree_size = max_tree_size
         self.tournament_size = tournament_size
         self.multi_objective = multi_objective
+        self.one_mutation_on_average = one_mutation_on_average
 
         self.generations = 0
 
@@ -174,17 +176,20 @@ class pyNSGP:
                 # variation of multi trees
                 if isinstance(o, MultiTreeIndividual):
 
+                    tup_enc, tup_dec = self.get_mutation_rate(o.num_sub_functions, o.num_sup_functions)
+                    print("OPERATORS RATE:", tup_enc, tup_dec)
+
                     while not variation_event_happened:
 
                         for i in range(o.num_sub_functions):
-                            if random() < self.crossover_rate / o.num_sub_functions:
+                            if random() < tup_enc[0]:
                                 o.sub_functions[i] = Variation.SubtreeCrossover(o.sub_functions[i], selected[randint(self.pop_size)].sub_functions[i])
                                 variation_event_happened = True
-                            elif random() < self.mutation_rate / o.num_sub_functions:
+                            elif random() < tup_enc[1]:
                                 o.sub_functions[i] = Variation.SubtreeMutation(o.sub_functions[i], self.functions, self.terminals,
                                                                                max_height=self.initialization_max_tree_height)
                                 variation_event_happened = True
-                            elif random() < self.op_mutation_rate / o.num_sub_functions:
+                            elif random() < tup_enc[2]:
                                 o.sub_functions[i] = Variation.OnePointMutation(o.sub_functions[i], self.functions, self.terminals)
                                 variation_event_happened = True
 
@@ -194,14 +199,14 @@ class pyNSGP:
 
                         # for the sup functions, we want each head/function to represent the same output dimension
                         for i in range(o.num_sup_functions):
-                            if random() < self.crossover_rate / o.num_sup_functions:
+                            if random() < tup_dec[0]:
                                 o.sup_functions[i] = Variation.SubtreeCrossover(o.sup_functions[i], selected[randint(self.pop_size)].sup_functions[i])
                                 variation_event_happened = True
-                            elif random() < self.mutation_rate / o.num_sup_functions:
+                            elif random() < tup_dec[1]:
                                 o.sup_functions[i] = Variation.SubtreeMutation(o.sup_functions[i], self.functions, self.supfun_terminals,
                                                                                max_height=self.initialization_max_tree_height)
                                 variation_event_happened = True
-                            elif random() < self.op_mutation_rate / o.num_sup_functions:
+                            elif random() < tup_dec[2]:
                                 o.sup_functions[i] = Variation.OnePointMutation(o.sup_functions[i], self.functions, self.supfun_terminals)
                                 variation_event_happened = True
 
@@ -399,6 +404,23 @@ class pyNSGP:
                 next_obj = front[j + 1].objectives[i]
 
                 front[j].crowding_distance += (next_obj - prev_obj) / (max_obj - min_obj)
+
+    def get_mutation_rate(self, num_sub_func, num_sup_func):
+
+        if self.one_mutation_on_average:
+            if num_sub_func == 0:
+                tup_enc = None
+            else:
+                rate_enc = 1/(num_sub_func * 3)
+                tup_enc = (rate_enc, rate_enc, rate_enc)
+
+            rate_dec = 1/(num_sup_func * 3)
+            tup_dec = (rate_dec, rate_dec, rate_dec)
+        else:
+            tup_enc = (self.crossover_rate, self.mutation_rate, self.op_mutation_rate)
+            tup_dec = tup_enc
+
+        return tup_enc, tup_dec
 
     def gp_multi_tree_output(self, front, x):
 
