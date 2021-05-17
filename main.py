@@ -155,4 +155,6 @@ if __name__ == "__main__":
 
                                     file_name = file_name + "_erc=" + str(erc)
 
-                                    #pickle.dump(results, open(file_name + ".p", "wb"))
+                                    file_name = file_name + "_multi_objective=" + str(multi_objective)
+
+                                    pickle.dump(results, open(file_name + ".p", "wb"))
