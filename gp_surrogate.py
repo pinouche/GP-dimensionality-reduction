@@ -81,10 +81,11 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
     num_sample_train = train_data_x.shape[0]
     num_sample_test = test_data_x.shape[0]
 
-    generations = 100
+    generations = 10
     low_dim_train_array = np.empty((generations, num_latent_dimensions, num_sample_train))
     low_dim_test_array = np.empty((generations, num_latent_dimensions, num_sample_test))
     individuals = [[] for _ in range(num_latent_dimensions)]
+    fitness = [[] for _ in range(num_latent_dimensions)]
 
     for index in range(num_latent_dimensions):
 
@@ -101,6 +102,7 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
         estimator.fit(train_data_x, low_dim_x[:, index])
 
         champions = estimator.get_list_info()
+        fitness[index].append([c.objectives[0] for c in champions])
         individuals[index].append(champions)
 
         # this is for the champions for each generation
@@ -110,6 +112,7 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
         low_dim_train_array[:, index, :] = low_dim_train
         low_dim_test_array[:, index, :] = low_dim_test
 
+    fitness = np.mean(np.squeeze(np.array(fitness)), axis=0)
     individuals = np.squeeze(np.array(individuals))
     summed_length = np.reshape(np.array([ind.objectives[1] for ind in individuals.flatten()]), individuals.shape)
     if num_latent_dimensions > 1:
@@ -122,13 +125,13 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
 
         avg_acc_train, _ = k_fold_valifation_accuracy_rf(x_train_low, train_data_y)
         avg_acc_test, _ = k_fold_valifation_accuracy_rf(x_test_low, test_data_y)
-
         train_reconstrution_loss, test_reconstruction_loss = neural_decoder_fitness(x_train_low, x_test_low, train_data_x, test_data_x)
 
-        print("METRICS:", avg_acc_train, avg_acc_test, train_reconstrution_loss, test_reconstruction_loss)
+        # original fitness
+        train_fitness = fitness[index]
 
-        info[0].append((avg_acc_train, train_reconstrution_loss, summed_length[index], np.transpose(individuals)[index]))
-        info[1].append((avg_acc_test, test_reconstruction_loss, summed_length[index], np.transpose(individuals)[index]))
+        info[0].append((train_fitness, avg_acc_train, train_reconstrution_loss, summed_length[index], np.transpose(individuals)[index]))
+        info[1].append((train_fitness, avg_acc_test, test_reconstruction_loss, summed_length[index], np.transpose(individuals)[index]))
 
     return info, None
 
