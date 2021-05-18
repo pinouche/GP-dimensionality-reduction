@@ -78,12 +78,11 @@ if __name__ == "__main__":
     mutation_rate = op_mutation_rate
     operators_rate = (crossover_rate, op_mutation_rate, mutation_rate)
 
-    num_of_runs = 1
+    num_of_runs = 10
     pop_size = 200
 
-    # fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank_spearman", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
-    # fitness_list = ["neural_decoder_fitness"]
-    fitness_list = ["autoencoder_teacher_fitness"]
+    fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank_spearman", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
+    # fitness_list = ["autoencoder_teacher_fitness"]
 
     for dataset in ["segmentation"]:
         for second_objective in ["length"]:
@@ -99,8 +98,7 @@ if __name__ == "__main__":
                         elif not stacked_gp and fitness == "gp_autoencoder_fitness":
                             list_gp_method = [True]  # for gp-autoencoder fitness, we want to use the shared multi-tree GP representation
                         elif not stacked_gp and fitness == "autoencoder_teacher_fitness":  # we only want vanilla GP when using teacher model
-                            # list_gp_method = [None, False]
-                            list_gp_method = [None]
+                            list_gp_method = [None, False]
                         else:
                             list_gp_method = [False]
 

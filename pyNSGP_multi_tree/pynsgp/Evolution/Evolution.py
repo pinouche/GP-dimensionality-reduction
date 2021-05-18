@@ -177,8 +177,7 @@ class pyNSGP:
                 if isinstance(o, MultiTreeIndividual):
 
                     tup_enc, tup_dec = self.get_mutation_rate(o.num_sub_functions, o.num_sup_functions)
-                    print("OPERATORS RATE:", tup_enc, tup_dec)
-
+                    
                     while not variation_event_happened:
 
                         for i in range(o.num_sub_functions):
