@@ -267,7 +267,7 @@ class pyNSGP:
                 self.latest_front = new_population
 
             if self.verbose:
-                print('g:', self.generations, 'elite obj1:', np.round(self.fitness_function.elite.objectives[0], 3),
+                print('g:', self.generations, 'elite obj1:', np.round(self.fitness_function.elite.objectives[0][0], 3),
                       ', obj2:', np.round(self.fitness_function.elite.objectives[1], 3))
                 print('elite:', self.fitness_function.elite.GetHumanExpression())
 
@@ -283,27 +283,29 @@ class pyNSGP:
                 if tree_champ.num_sub_functions > 0:
                     tree_champ = tree_champ.sub_functions
 
-                print("METRICS: ", accuracy_champ_train, accuracy_champ_test, reconstruction_train_loss, reconstruction_test_loss)
-                list_info[0].append((self.fitness_function.elite.objectives[0], accuracy_champ_train, reconstruction_train_loss, len_champ_train,
+                list_info[0].append((self.fitness_function.elite.objectives[0][0], accuracy_champ_train, reconstruction_train_loss, len_champ_train,
                                      tree_champ))
-                list_info[1].append((self.fitness_function.elite.objectives[0], accuracy_champ_test, reconstruction_test_loss, len_champ_train,
+                list_info[1].append((self.fitness_function.elite.objectives[0][1], accuracy_champ_test, reconstruction_test_loss, len_champ_train,
                                      tree_champ))
 
                 if self.generations == self.max_generations - 1:
-                    front_non_duplicate = self.get_non_duplicate_front(self.latest_front)
+                    if self.multi_objective:
+                        front_non_duplicate = self.get_non_duplicate_front(self.latest_front)
 
-                    front_information = []
-                    for individual in front_non_duplicate:
-                        accuracy_train, length, tree, x_low_train = self.get_information_from_front([individual], self.x_train, self.y_train)
-                        accuracy_test, length, tree, x_low_test = self.get_information_from_front([individual], self.x_test, self.y_test)
-                        reconstruction_train_loss, reconstruction_test_loss = self.neural_decoder_fitness(x_low_train, x_low_test)
+                        front_information = []
+                        for individual in front_non_duplicate:
+                            accuracy_train, length, tree, x_low_train = self.get_information_from_front([individual], self.x_train, self.y_train)
+                            accuracy_test, length, tree, x_low_test = self.get_information_from_front([individual], self.x_test, self.y_test)
+                            reconstruction_train_loss, reconstruction_test_loss = self.neural_decoder_fitness(x_low_train, x_low_test)
 
-                        if tree.num_sub_functions > 0:
-                            tree = tree.sub_functions
+                            if tree.num_sub_functions > 0:
+                                tree = tree.sub_functions
 
-                        front_information.append((accuracy_test, reconstruction_test_loss, length, tree))
+                            front_information.append((accuracy_test, reconstruction_test_loss, length, tree))
 
-                    self.front_information = front_information
+                        self.front_information = front_information
+                    else:
+                        self.front_information = None
 
             else:
                 list_info.append(self.fitness_function.elite)

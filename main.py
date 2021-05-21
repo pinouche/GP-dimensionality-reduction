@@ -38,6 +38,7 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators
     # get the low dimensional representation of the data
     model = train_base_model(train_data_x, seed, num_latent_dimensions)
 
+    print(train_data_x.shape, test_data_x.shape)
     low_dim_x = get_hidden_layers(model, train_data_x)[3]
     low_dim_test_x = get_hidden_layers(model, test_data_x)[3]
 
@@ -50,13 +51,16 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators
 
     print("Computing for method GP")
     if share_multi_tree is not None:
-        info, front_last_generation = multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y,
+        info, front_last_generation = multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y,
+                                                                    test_data_x, low_dim_test_x, test_data_y,
                                                                     operators_rate,
                                                                     share_multi_tree, second_objective, fitness,
                                                                     stacked_gp, pop_size, erc, multi_objective, one_mutation_on_average)
     else:
         # here, front_last_generation is None
-        info, front_last_generation = gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, operators_rate,
+        info, front_last_generation = gp_surrogate_model(train_data_x, low_dim_x, train_data_y,
+                                                         test_data_x, low_dim_test_x, test_data_y,
+                                                         operators_rate,
                                                          second_objective, pop_size,
                                                          erc, multi_objective, one_mutation_on_average)
 
@@ -78,8 +82,8 @@ if __name__ == "__main__":
     mutation_rate = op_mutation_rate
     operators_rate = (crossover_rate, op_mutation_rate, mutation_rate)
 
-    num_of_runs = 10
-    pop_size = 200
+    num_of_runs = 1
+    pop_size = 10
 
     fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank_spearman", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
     # fitness_list = ["autoencoder_teacher_fitness"]

@@ -44,21 +44,22 @@ class pyNSGPEstimator(BaseEstimator, RegressorMixin):
         for arg, val in values.items():
             setattr(self, arg, val)
 
-    def fit(self, X, y):
+    def fit(self, X_train, Y_train, X_test, Y_test):
 
-        fitness_function = SymbolicRegressionFitness(X, y, self.use_linear_scaling, second_objective=self.second_objective,
+        fitness_function = SymbolicRegressionFitness(X_train, Y_train, X_test, Y_test,
+                                                     self.use_linear_scaling, second_objective=self.second_objective,
                                                      fitness=self.fitness)
 
         terminals = []
         if self.use_erc:
             terminals.append(EphemeralRandomConstantNode())
-        n_features = X.shape[1]
+        n_features = X_train.shape[1]
         for i in range(n_features):
             terminals.append(FeatureNode(i))
 
         self.num_sup_functions = 0
         if self.use_multi_tree:
-            self.num_sup_functions = y.shape[1]
+            self.num_sup_functions = Y_train.shape[1]
 
         nsgp = pyNSGP(fitness_function,
                       self.functions,
@@ -91,26 +92,26 @@ class pyNSGPEstimator(BaseEstimator, RegressorMixin):
 
         return self
 
-    def predict(self, X):
-        assert (not self.use_multi_tree)  # not implemented!
-        # Check fit has been called
-        check_is_fitted(self, ['nsgp_'])
-
-        # Input validation
-        X = check_array(X)
-        fifu = self.nsgp_.fitness_function
-        prediction = fifu.elite.ls_a + fifu.elite.elite.ls_b * fifu.elite.GetOutput(X)
-
-        return prediction
-
-    def score(self, X, y=None):
-        assert (not self.use_multi_tree)  # not implemented!
-        if y is None:
-            raise ValueError('The ground truth y was not set')
-
-        # Check fit has been called
-        prediction = self.predict(X)
-        return -1.0 * np.mean(np.square(y - prediction))
+    # def predict(self, X):
+    #     assert (not self.use_multi_tree)  # not implemented!
+    #     # Check fit has been called
+    #     check_is_fitted(self, ['nsgp_'])
+    #
+    #     # Input validation
+    #     X = check_array(X)
+    #     fifu = self.nsgp_.fitness_function
+    #     prediction = fifu.elite.ls_a + fifu.elite.elite.ls_b * fifu.elite.GetOutput(X)
+    #
+    #     return prediction
+    #
+    # def score(self, X, y=None):
+    #     assert (not self.use_multi_tree)  # not implemented!
+    #     if y is None:
+    #         raise ValueError('The ground truth y was not set')
+    #
+    #     # Check fit has been called
+    #     prediction = self.predict(X)
+    #     return -1.0 * np.mean(np.square(y - prediction))
 
     def get_params(self, deep=True):
         attributes = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))

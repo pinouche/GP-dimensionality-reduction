@@ -7,7 +7,7 @@ import keras
 from util import k_fold_valifation_accuracy_rf
 
 
-def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, operators_rate, share_multi_tree,
+def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, low_dim_test_x, test_data_y, operators_rate, share_multi_tree,
                                   second_objective="length", fitness="autoencoder_teacher_fitness", stacked_gp=False, pop_size=100, erc=False,
                                   multi_objective=False, one_mutation_on_average=False):
 
@@ -15,17 +15,6 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
     scaler.fit(train_data_x)
     train_data_x = scaler.transform(train_data_x)
     test_data_x = scaler.transform(test_data_x)
-
-    if stacked_gp:
-        for layer in range(1):
-            print("COMPUTING FOR LAYER: " + str(layer))
-            building_blocks_train, building_blocks_test = get_building_blocks(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y,
-                                                                              second_objective,
-                                                                              fitness, pop_size)
-
-            for index in range(building_blocks_train.shape[0]):
-                train_data_x = np.hstack((train_data_x, building_blocks_train[index]))
-                test_data_x = np.hstack((test_data_x, building_blocks_test[index]))
 
     # Prepare NSGP settings
     if share_multi_tree and fitness != "gp_autoencoder_fitness":
@@ -47,7 +36,7 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
         use_linear_scaling = False
 
     estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y,
-                     pop_size=pop_size, max_generations=100, verbose=True, max_tree_size=100,
+                     pop_size=pop_size, max_generations=2, verbose=True, max_tree_size=100,
                      crossover_rate=operators_rate[0], mutation_rate=operators_rate[1], op_mutation_rate=operators_rate[2], min_depth=1,
                      initialization_max_tree_height=init_max_tree_height, tournament_size=2, use_linear_scaling=use_linear_scaling,
                      use_erc=erc, second_objective=second_objective,
@@ -59,9 +48,9 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
                      one_mutation_on_average=one_mutation_on_average)
 
     if fitness != "gp_autoencoder_fitness":
-        estimator.fit(train_data_x, low_dim_x)
+        estimator.fit(train_data_x, low_dim_x, test_data_x, low_dim_test_x)
     else:
-        estimator.fit(train_data_x, train_data_x)
+        estimator.fit(train_data_x, train_data_x, test_data_x, test_data_x)
 
     info = estimator.get_list_info()
     front_information = estimator.get_front_info()
@@ -69,7 +58,7 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
     return info, front_information
 
 
-def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, operators_rate,
+def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, low_dim_test_x, test_data_y, operators_rate,
                        second_objective="length", pop_size=100, erc=False, multi_objective=False, one_mutation_on_average=False):
 
     scaler = StandardScaler()
@@ -81,11 +70,12 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
     num_sample_train = train_data_x.shape[0]
     num_sample_test = test_data_x.shape[0]
 
-    generations = 100
+    generations = 2
     low_dim_train_array = np.empty((generations, num_latent_dimensions, num_sample_train))
     low_dim_test_array = np.empty((generations, num_latent_dimensions, num_sample_test))
     individuals = [[] for _ in range(num_latent_dimensions)]
-    fitness = [[] for _ in range(num_latent_dimensions)]
+    fitness_train_list = [[] for _ in range(num_latent_dimensions)]
+    fitness_test_list = [[] for _ in range(num_latent_dimensions)]
 
     for index in range(num_latent_dimensions):
 
@@ -99,10 +89,11 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
                          use_multi_tree=False, multi_objective=multi_objective,
                          one_mutation_on_average=one_mutation_on_average)
 
-        estimator.fit(train_data_x, low_dim_x[:, index])
+        estimator.fit(train_data_x, low_dim_x[:, index], test_data_x, low_dim_test_x[:, index])
 
         champions = estimator.get_list_info()
-        fitness[index].append([c.objectives[0] for c in champions])
+        fitness_train_list[index].append([c.objectives[0][0] for c in champions])
+        fitness_test_list[index].append([c.objectives[0][1] for c in champions])
         individuals[index].append(champions)
 
         # this is for the champions for each generation
@@ -112,7 +103,8 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
         low_dim_train_array[:, index, :] = low_dim_train
         low_dim_test_array[:, index, :] = low_dim_test
 
-    fitness = np.mean(np.squeeze(np.array(fitness)), axis=0)
+    fitness_train = np.mean(np.squeeze(np.array(fitness_train_list)), axis=0)
+    fitness_test = np.mean(np.squeeze(np.array(fitness_test_list)), axis=0)
     individuals = np.squeeze(np.array(individuals))
     summed_length = np.reshape(np.array([ind.objectives[1] for ind in individuals.flatten()]), individuals.shape)
     if num_latent_dimensions > 1:
@@ -127,45 +119,10 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, test_
         avg_acc_test, _ = k_fold_valifation_accuracy_rf(x_test_low, test_data_y)
         train_reconstrution_loss, test_reconstruction_loss = neural_decoder_fitness(x_train_low, x_test_low, train_data_x, test_data_x)
 
-        # original fitness
-        train_fitness = fitness[index]
-
-        info[0].append((train_fitness, avg_acc_train, train_reconstrution_loss, summed_length[index], np.transpose(individuals)[index]))
-        info[1].append((train_fitness, avg_acc_test, test_reconstruction_loss, summed_length[index], np.transpose(individuals)[index]))
+        info[0].append((fitness_train[index], avg_acc_train, train_reconstrution_loss, summed_length[index], np.transpose(individuals)[index]))
+        info[1].append((fitness_test[index], avg_acc_test, test_reconstruction_loss, summed_length[index], np.transpose(individuals)[index]))
 
     return info, None
-
-
-def get_building_blocks(train_data_x, low_dim_x, train_data_y, test_data_x, test_data_y, second_objective="length",
-                        fitness="autoencoder_teacher_fitness", pop_size=100):
-
-    num_sub_functions = 0
-
-    if fitness == "autoencoder_teacher_fitness":
-        use_linear_scaling = True
-    else:
-        use_linear_scaling = False
-
-    estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y,
-                     pop_size=pop_size, max_generations=2, verbose=True, max_tree_size=100,
-                     crossover_rate=0.8, mutation_rate=0.1, op_mutation_rate=0.1, min_depth=2,
-                     initialization_max_tree_height=3, tournament_size=2, use_linear_scaling=use_linear_scaling,
-                     use_erc=False, second_objective=second_objective,
-                     functions=[AddNode(), SubNode(), MulNode(), DivNode()],
-                     use_multi_tree=True,
-                     multi_objective=False,
-                     fitness=fitness,
-                     num_sub_functions=num_sub_functions)
-
-    estimator.fit(train_data_x, low_dim_x)
-
-    front_non_duplicate = get_non_duplicate_front(estimator)
-    print("non-duplicate front length: " + str(len(front_non_duplicate)))
-
-    building_blocks_train, _, _, _ = gp_multi_tree_output(front_non_duplicate, train_data_x, fitness)
-    building_blocks_test, _, _, _ = gp_multi_tree_output(front_non_duplicate, test_data_x, fitness)
-
-    return building_blocks_train, building_blocks_test
 
 
 def get_single_tree_output(front, x):

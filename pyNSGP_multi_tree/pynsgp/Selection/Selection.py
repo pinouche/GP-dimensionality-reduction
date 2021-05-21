@@ -17,7 +17,7 @@ def TournamentSelect(population, how_many_to_select, multi_objective, tournament
 				if (contestant.rank < best.rank) or (contestant.rank == best.rank and contestant.crowding_distance > best.crowding_distance):
 					best = contestant
 			else:
-				if contestant.objectives[0] < best.objectives[0]:
+				if contestant.objectives[0][0] < best.objectives[0][0]:
 					best = contestant
 
 		survivor = deepcopy(best)
