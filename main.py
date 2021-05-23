@@ -13,8 +13,7 @@ from load_data import shuffle_data
 
 
 def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators_rate, share_multi_tree=False, second_objective="length",
-                     fitness="autoencoder_teacher_fitness", stacked_gp=False, pop_size=100, erc=False, multi_objective=False,
-                     one_mutation_on_average=False):
+                     fitness="autoencoder_teacher_fitness", pop_size=100, multi_objective=False, one_mutation_on_average=False):
 
     print("COMPUTING FOR RUN NUMBER: " + str(seed))
 
@@ -38,7 +37,6 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators
     # get the low dimensional representation of the data
     model = train_base_model(train_data_x, seed, num_latent_dimensions)
 
-    print(train_data_x.shape, test_data_x.shape)
     low_dim_x = get_hidden_layers(model, train_data_x)[3]
     low_dim_test_x = get_hidden_layers(model, test_data_x)[3]
 
@@ -55,14 +53,14 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators
                                                                     test_data_x, low_dim_test_x, test_data_y,
                                                                     operators_rate,
                                                                     share_multi_tree, second_objective, fitness,
-                                                                    stacked_gp, pop_size, erc, multi_objective, one_mutation_on_average)
+                                                                    pop_size, multi_objective, one_mutation_on_average)
     else:
         # here, front_last_generation is None
         info, front_last_generation = gp_surrogate_model(train_data_x, low_dim_x, train_data_y,
                                                          test_data_x, low_dim_test_x, test_data_y,
                                                          operators_rate,
                                                          second_objective, pop_size,
-                                                         erc, multi_objective, one_mutation_on_average)
+                                                         multi_objective, one_mutation_on_average)
 
     dic_one_run["original_data_accuracy"] = org_avg_acc
     dic_one_run["teacher_accuracy"] = (avg_acc, avg_reconstruction)
@@ -83,80 +81,68 @@ if __name__ == "__main__":
     operators_rate = (crossover_rate, op_mutation_rate, mutation_rate)
 
     num_of_runs = 1
-    pop_size = 10
+    pop_size = 200
 
-    fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank_spearman", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
-    # fitness_list = ["autoencoder_teacher_fitness"]
+    # fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank_spearman", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
+    fitness_list = ["autoencoder_teacher_fitness"]
 
     for dataset in ["segmentation"]:
         for second_objective in ["length"]:
-            for erc in [True]:
-                for stacked_gp in [False]:
-                    for fitness in fitness_list:
+            for fitness in fitness_list:
 
-                        # specify the allowed combination of methods
-                        if stacked_gp and fitness != "gp_autoencoder_fitness":
-                            list_gp_method = [False]  # we only want multi-tree non-shared
-                        elif stacked_gp and fitness == "gp_autoencoder_fitness":
-                            list_gp_method = []  # we do not want to compute for stacked gp and gp_autoencoder fitness (empty list)
-                        elif not stacked_gp and fitness == "gp_autoencoder_fitness":
-                            list_gp_method = [True]  # for gp-autoencoder fitness, we want to use the shared multi-tree GP representation
-                        elif not stacked_gp and fitness == "autoencoder_teacher_fitness":  # we only want vanilla GP when using teacher model
-                            list_gp_method = [None, False]
-                        else:
-                            list_gp_method = [False]
+                # specify the allowed combination of methods
+                if fitness not in ["gp_autoencoder_fitness", "autoencoder_teacher_fitness"]:
+                    list_gp_method = [False]  # we only want multi-tree non-shared
+                elif fitness == "gp_autoencoder_fitness":
+                    list_gp_method = [True]  # for gp-autoencoder fitness, we want to use the shared multi-tree GP representation
+                elif fitness == "autoencoder_teacher_fitness":  # we only want vanilla GP when using teacher model
+                    list_gp_method = [False]
+                else:
+                    list_gp_method = [False]
 
-                        if list_gp_method:
+                if list_gp_method:
 
-                            for gp_method in list_gp_method:  # True: shared, multi-tree; False: non-shared, multi-tree; None: vanilla GP
-                                print("THE GP METHOD IS")
-                                print("stacked_gp: ", stacked_gp, "fitness: ", fitness, "GP representation: ", gp_method)
+                    for gp_method in list_gp_method:  # True: shared, multi-tree; False: non-shared, multi-tree; None: vanilla GP
+                        print("THE GP METHOD IS")
+                        print("fitness: ", fitness, "GP representation: ", gp_method)
 
-                                if gp_method is None and ("manifold_fitness" in fitness or fitness == "neural_decoder_fitness"):
-                                    raise ValueError("the GP representation is not multi-tree and the fitness function is manifold function!")
+                        if gp_method is None and ("manifold_fitness" in fitness or fitness == "neural_decoder_fitness"):
+                            raise ValueError("the GP representation is not multi-tree and the fitness function is manifold function!")
 
-                                if gp_method is not False and stacked_gp:
-                                    raise ValueError("we want to to use non-shared multi-tree with stacked GP (stacked GP is already shared)")
+                        for num_latent_dimensions in [2]:
 
-                                for num_latent_dimensions in [2]:
+                            manager = multiprocessing.Manager()
+                            return_dict = manager.dict()
 
-                                    manager = multiprocessing.Manager()
-                                    return_dict = manager.dict()
+                            p = [multiprocessing.Process(target=low_dim_accuracy,
+                                                         args=(dataset, seed, return_dict, num_latent_dimensions, operators_rate, gp_method,
+                                                         second_objective, fitness, pop_size, multi_objective,
+                                                         one_mutation_on_average))
+                                                         for seed in range(num_of_runs)]
 
-                                    p = [multiprocessing.Process(target=low_dim_accuracy,
-                                                                 args=(dataset, seed, return_dict, num_latent_dimensions, operators_rate, gp_method,
-                                                                 second_objective, fitness, stacked_gp, pop_size, erc, multi_objective,
-                                                                 one_mutation_on_average))
-                                                                 for seed in range(num_of_runs)]
+                            for proc in p:
+                                proc.start()
+                            for proc in p:
+                                proc.join()
 
-                                    for proc in p:
-                                        proc.start()
-                                    for proc in p:
-                                        proc.join()
+                            results = return_dict.values()
 
-                                    results = return_dict.values()
+                            path = "gecco/" + dataset + "/"
 
-                                    path = "gecco/" + dataset + "/"
+                            os.makedirs(path, exist_ok=True)
+                            file_name = path + "results_" + dataset + "_" + str(num_latent_dimensions)
 
-                                    os.makedirs(path, exist_ok=True)
-                                    file_name = path + "results_" + dataset + "_" + str(num_latent_dimensions)
+                            if gp_method:
+                                file_name = file_name + "_mt_shared"
+                            elif gp_method is False:
+                                file_name = file_name + "_mt_not_shared"
+                            elif gp_method is None:
+                                file_name = file_name + "_vanilla"
 
-                                    if gp_method:
-                                        file_name = file_name + "_mt_shared"
-                                    elif gp_method is False:
-                                        file_name = file_name + "_mt_not_shared"
-                                    elif gp_method is None:
-                                        file_name = file_name + "_vanilla"
+                            file_name = file_name + "_" + fitness + "_" + second_objective
 
-                                    if stacked_gp:
-                                        file_name = file_name + "_stacked"
+                            file_name = file_name + "_pop=" + str(pop_size)
 
-                                    file_name = file_name + "_" + fitness + "_" + second_objective
+                            file_name = file_name + "_multi_objective=" + str(multi_objective)
 
-                                    file_name = file_name + "_pop=" + str(pop_size)
-
-                                    file_name = file_name + "_erc=" + str(erc)
-
-                                    file_name = file_name + "_multi_objective=" + str(multi_objective)
-
-                                    pickle.dump(results, open(file_name + ".p", "wb"))
+                            pickle.dump(results, open(file_name + ".p", "wb"))

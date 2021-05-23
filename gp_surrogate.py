@@ -8,8 +8,8 @@ from util import k_fold_valifation_accuracy_rf
 
 
 def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, low_dim_test_x, test_data_y, operators_rate, share_multi_tree,
-                                  second_objective="length", fitness="autoencoder_teacher_fitness", stacked_gp=False, pop_size=100, erc=False,
-                                  multi_objective=False, one_mutation_on_average=False):
+                                  second_objective="length", fitness="autoencoder_teacher_fitness", pop_size=100, multi_objective=False,
+                                  one_mutation_on_average=False):
 
     scaler = StandardScaler()
     scaler.fit(train_data_x)
@@ -23,9 +23,6 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
     elif share_multi_tree and fitness == "gp_autoencoder_fitness":
         init_max_tree_height = 7
         num_sub_functions = low_dim_x.shape[1]
-    elif stacked_gp:
-        init_max_tree_height = 3
-        num_sub_functions = 0
     else:
         init_max_tree_height = 7
         num_sub_functions = 0
@@ -36,10 +33,10 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
         use_linear_scaling = False
 
     estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y,
-                     pop_size=pop_size, max_generations=2, verbose=True, max_tree_size=100,
+                     pop_size=pop_size, max_generations=100, verbose=True, max_tree_size=100,
                      crossover_rate=operators_rate[0], mutation_rate=operators_rate[1], op_mutation_rate=operators_rate[2], min_depth=1,
                      initialization_max_tree_height=init_max_tree_height, tournament_size=2, use_linear_scaling=use_linear_scaling,
-                     use_erc=erc, second_objective=second_objective,
+                     use_erc=True, second_objective=second_objective,
                      functions=[AddNode(), SubNode(), MulNode(), DivNode()],
                      use_multi_tree=True,
                      multi_objective=multi_objective,
@@ -59,7 +56,7 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
 
 
 def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, low_dim_test_x, test_data_y, operators_rate,
-                       second_objective="length", pop_size=100, erc=False, multi_objective=False, one_mutation_on_average=False):
+                       second_objective="length", pop_size=100, multi_objective=False, one_mutation_on_average=False):
 
     scaler = StandardScaler()
     scaler.fit(train_data_x)
@@ -70,7 +67,7 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, low_d
     num_sample_train = train_data_x.shape[0]
     num_sample_test = test_data_x.shape[0]
 
-    generations = 2
+    generations = 100
     low_dim_train_array = np.empty((generations, num_latent_dimensions, num_sample_train))
     low_dim_test_array = np.empty((generations, num_latent_dimensions, num_sample_test))
     individuals = [[] for _ in range(num_latent_dimensions)]
@@ -83,7 +80,7 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, low_d
                          pop_size=pop_size, max_generations=generations, verbose=True, max_tree_size=100,
                          crossover_rate=operators_rate[0], mutation_rate=operators_rate[1], op_mutation_rate=operators_rate[2], min_depth=1,
                          initialization_max_tree_height=7, tournament_size=2, use_linear_scaling=True,
-                         use_erc=erc, second_objective=second_objective,
+                         use_erc=True, second_objective=second_objective,
                          functions=[AddNode(), SubNode(), MulNode(), DivNode()],
                          fitness="autoencoder_teacher_fitness",
                          use_multi_tree=False, multi_objective=multi_objective,

@@ -164,7 +164,7 @@ class pyNSGP:
 
         while not self.__ShouldTerminate():
 
-            selected = Selection.TournamentSelect(self.population, self.pop_size, self.multi_objective, tournament_size=self.tournament_size)
+            selected = Selection.tournament(self.population, self.pop_size, self.multi_objective, tournament_size=self.tournament_size)
 
             O = []
             for i in range(self.pop_size):
@@ -210,8 +210,8 @@ class pyNSGP:
                                 variation_event_happened = True
 
                             # correct for violation of constraints
-                            if (self.fitness_function.EvaluateLength(o) > self.max_tree_size) or (o.sup_functions[i].GetHeight() < self.min_depth):
-                                o.sup_functions[i] = deepcopy(selected[i].sup_functions[i])
+                            # if (self.fitness_function.EvaluateLength(o) > self.max_tree_size) or (o.sup_functions[i].GetHeight() < self.min_depth):
+                            #   o.sup_functions[i] = deepcopy(selected[i].sup_functions[i])
 
                     self.fitness_function.Evaluate(o)
 
