@@ -8,8 +8,7 @@ from util import k_fold_valifation_accuracy_rf
 
 
 def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, low_dim_test_x, test_data_y, operators_rate, share_multi_tree,
-                                  second_objective="length", fitness="autoencoder_teacher_fitness", pop_size=100, multi_objective=False,
-                                  one_mutation_on_average=False):
+                                  second_objective="length", fitness="autoencoder_teacher_fitness", pop_size=100, multi_objective=False):
 
     scaler = StandardScaler()
     scaler.fit(train_data_x)
@@ -41,8 +40,7 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
                      use_multi_tree=True,
                      multi_objective=multi_objective,
                      fitness=fitness,
-                     num_sub_functions=num_sub_functions,
-                     one_mutation_on_average=one_mutation_on_average)
+                     num_sub_functions=num_sub_functions)
 
     if fitness != "gp_autoencoder_fitness":
         estimator.fit(train_data_x, low_dim_x, test_data_x, low_dim_test_x)
@@ -83,8 +81,7 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, low_d
                          use_erc=True, second_objective=second_objective,
                          functions=[AddNode(), SubNode(), MulNode(), DivNode()],
                          fitness="autoencoder_teacher_fitness",
-                         use_multi_tree=False, multi_objective=multi_objective,
-                         one_mutation_on_average=one_mutation_on_average)
+                         use_multi_tree=False, multi_objective=multi_objective)
 
         estimator.fit(train_data_x, low_dim_x[:, index], test_data_x, low_dim_test_x[:, index])
 

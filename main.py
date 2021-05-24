@@ -73,7 +73,6 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators
 if __name__ == "__main__":
 
     multi_objective = False
-    one_mutation_on_average = False
 
     crossover_rate = 0.8
     op_mutation_rate = 0.1
@@ -116,8 +115,7 @@ if __name__ == "__main__":
 
                             p = [multiprocessing.Process(target=low_dim_accuracy,
                                                          args=(dataset, seed, return_dict, num_latent_dimensions, operators_rate, gp_method,
-                                                         second_objective, fitness, pop_size, multi_objective,
-                                                         one_mutation_on_average))
+                                                         second_objective, fitness, pop_size, multi_objective))
                                                          for seed in range(num_of_runs)]
 
                             for proc in p:

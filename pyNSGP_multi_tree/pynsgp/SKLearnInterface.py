@@ -35,8 +35,7 @@ class pyNSGPEstimator(BaseEstimator, RegressorMixin):
                  verbose=False,
                  use_multi_tree=False,
                  multi_objective=False,
-                 num_sub_functions=4,
-                 one_mutation_on_average=False
+                 num_sub_functions=4
                  ):
 
         args, _, _, values = inspect.getargvalues(inspect.currentframe())
@@ -83,7 +82,6 @@ class pyNSGPEstimator(BaseEstimator, RegressorMixin):
                       multi_objective=self.multi_objective,
                       num_sub_functions=self.num_sub_functions,
                       num_sup_functions=self.num_sup_functions,
-                      one_mutation_on_average=self.one_mutation_on_average,
                       verbose=self.verbose
                       )
 
@@ -91,27 +89,6 @@ class pyNSGPEstimator(BaseEstimator, RegressorMixin):
         self.nsgp_ = nsgp
 
         return self
-
-    # def predict(self, X):
-    #     assert (not self.use_multi_tree)  # not implemented!
-    #     # Check fit has been called
-    #     check_is_fitted(self, ['nsgp_'])
-    #
-    #     # Input validation
-    #     X = check_array(X)
-    #     fifu = self.nsgp_.fitness_function
-    #     prediction = fifu.elite.ls_a + fifu.elite.elite.ls_b * fifu.elite.GetOutput(X)
-    #
-    #     return prediction
-    #
-    # def score(self, X, y=None):
-    #     assert (not self.use_multi_tree)  # not implemented!
-    #     if y is None:
-    #         raise ValueError('The ground truth y was not set')
-    #
-    #     # Check fit has been called
-    #     prediction = self.predict(X)
-    #     return -1.0 * np.mean(np.square(y - prediction))
 
     def get_params(self, deep=True):
         attributes = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))
