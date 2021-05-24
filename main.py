@@ -59,7 +59,7 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators
         info, front_last_generation = gp_surrogate_model(train_data_x, low_dim_x, train_data_y,
                                                          test_data_x, low_dim_test_x, test_data_y,
                                                          operators_rate,
-                                                         second_objective, pop_size,
+                                                         second_objective, int(pop_size/num_latent_dimensions),
                                                          multi_objective, one_mutation_on_average)
 
     dic_one_run["original_data_accuracy"] = org_avg_acc
@@ -73,7 +73,7 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators
 if __name__ == "__main__":
 
     multi_objective = False
-    one_mutation_on_average = True
+    one_mutation_on_average = False
 
     crossover_rate = 0.8
     op_mutation_rate = 0.1
