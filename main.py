@@ -53,14 +53,14 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators
                                                                     test_data_x, low_dim_test_x, test_data_y,
                                                                     operators_rate,
                                                                     share_multi_tree, second_objective, fitness,
-                                                                    pop_size, multi_objective, one_mutation_on_average)
+                                                                    pop_size, multi_objective)
     else:
         # here, front_last_generation is None
         info, front_last_generation = gp_surrogate_model(train_data_x, low_dim_x, train_data_y,
                                                          test_data_x, low_dim_test_x, test_data_y,
                                                          operators_rate,
                                                          second_objective, int(pop_size/num_latent_dimensions),
-                                                         multi_objective, one_mutation_on_average)
+                                                         multi_objective)
 
     dic_one_run["original_data_accuracy"] = org_avg_acc
     dic_one_run["teacher_accuracy"] = (avg_acc, avg_reconstruction)

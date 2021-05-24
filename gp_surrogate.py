@@ -54,7 +54,7 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
 
 
 def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, low_dim_test_x, test_data_y, operators_rate,
-                       second_objective="length", pop_size=100, multi_objective=False, one_mutation_on_average=False):
+                       second_objective="length", pop_size=100, multi_objective=False):
 
     scaler = StandardScaler()
     scaler.fit(train_data_x)
