@@ -278,6 +278,7 @@ class pyNSGP:
                 if tree_champ.num_sub_functions > 0:
                     tree_champ = tree_champ.sub_functions
 
+                print("TRAIN: ", self.fitness_function.elite.objectives[0][0], "TEST: ", self.fitness_function.elite.objectives[0][1])
                 list_info[0].append((self.fitness_function.elite.objectives[0][0], accuracy_champ_train, reconstruction_train_loss, len_champ_train,
                                      tree_champ))
                 list_info[1].append((self.fitness_function.elite.objectives[0][1], accuracy_champ_test, reconstruction_test_loss, len_champ_train,

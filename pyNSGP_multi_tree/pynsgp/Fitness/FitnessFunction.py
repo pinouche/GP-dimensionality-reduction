@@ -62,9 +62,11 @@ class SymbolicRegressionFitness:
             if train:
                 b = np.cov(self.y_train, output)[0, 1] / (np.var(output) + 1e-10)
                 a = np.mean(self.y_train) - b * np.mean(output)
-
-            individual.ls_a = a
-            individual.ls_b = b
+                individual.ls_a = a
+                individual.ls_b = b
+            else:
+                a = individual.ls_a
+                b = individual.ls_b
         scaled_output = a + b * output
         fit_error = np.mean(np.square(data_y - scaled_output))
 
@@ -84,6 +86,9 @@ class SymbolicRegressionFitness:
                     a = np.mean(self.y_train[:, i]) - b * np.mean(output[:, i])
                     individual.sup_functions[i].ls_a = a
                     individual.sup_functions[i].ls_b = b
+                else:
+                    a = individual.sup_functions[i].ls_a
+                    b = individual.sup_functions[i].ls_b
 
             scaled_output = a + b * output[:, i]
             fit_error = np.mean(np.square(data_y[:, i] - scaled_output))

@@ -82,8 +82,8 @@ if __name__ == "__main__":
     num_of_runs = 1
     pop_size = 200
 
-    fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank_spearman", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
-    # fitness_list = ["autoencoder_teacher_fitness"]
+    # fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank_spearman", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
+    fitness_list = ["autoencoder_teacher_fitness"]
 
     for dataset in ["segmentation"]:
         for second_objective in ["length"]:
@@ -143,4 +143,4 @@ if __name__ == "__main__":
 
                             file_name = file_name + "_multi_objective=" + str(multi_objective)
 
-                            # pickle.dump(results, open(file_name + ".p", "wb"))
+                            pickle.dump(results, open(file_name + ".p", "wb"))
