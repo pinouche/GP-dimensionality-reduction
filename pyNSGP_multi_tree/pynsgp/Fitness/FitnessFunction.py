@@ -182,9 +182,6 @@ class SymbolicRegressionFitness:
         else:
             fit_error = self.__EvaluateMeanSquaredErrorOfNormalTree(data_x, data_y, individual, train)
 
-        if np.isnan(fit_error):
-            fit_error = np.inf
-
         return fit_error
 
     def EvaluateLength(self, individual):

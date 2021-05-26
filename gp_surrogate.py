@@ -32,7 +32,7 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
         use_linear_scaling = False
 
     estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y,
-                     pop_size=pop_size, max_generations=100, verbose=True, max_tree_size=100,
+                     pop_size=pop_size, max_generations=50, verbose=True, max_tree_size=50,
                      crossover_rate=operators_rate[0], mutation_rate=operators_rate[1], op_mutation_rate=operators_rate[2], min_depth=1,
                      initialization_max_tree_height=init_max_tree_height, tournament_size=2, use_linear_scaling=use_linear_scaling,
                      use_erc=True, second_objective=second_objective,
@@ -65,7 +65,7 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, low_d
     num_sample_train = train_data_x.shape[0]
     num_sample_test = test_data_x.shape[0]
 
-    generations = 100
+    generations = 10
     low_dim_train_array = np.empty((generations, num_latent_dimensions, num_sample_train))
     low_dim_test_array = np.empty((generations, num_latent_dimensions, num_sample_test))
     individuals = [[] for _ in range(num_latent_dimensions)]
@@ -75,7 +75,7 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, low_d
     for index in range(num_latent_dimensions):
 
         estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y,
-                         pop_size=pop_size, max_generations=generations, verbose=True, max_tree_size=100,
+                         pop_size=pop_size, max_generations=generations, verbose=True, max_tree_size=50,
                          crossover_rate=operators_rate[0], mutation_rate=operators_rate[1], op_mutation_rate=operators_rate[2], min_depth=1,
                          initialization_max_tree_height=7, tournament_size=2, use_linear_scaling=True,
                          use_erc=True, second_objective=second_objective,

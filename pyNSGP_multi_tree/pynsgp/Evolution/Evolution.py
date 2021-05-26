@@ -189,7 +189,7 @@ class pyNSGP:
                                 variation_event_happened = True
 
                             # correct for violation of constraints
-                            if (len(o.sub_functions[i].GetSubtree()) > self.max_tree_size) or (o.sub_functions[i].GetHeight() < self.min_depth):
+                            if len(o.sub_functions[i].GetSubtree()) > self.max_tree_size:
                                 o.sub_functions[i] = deepcopy(selected[i].sub_functions[i])
 
                         # for the sup functions, we want each head/function to represent the same output dimension
@@ -205,9 +205,8 @@ class pyNSGP:
                                 o.sup_functions[i] = Variation.OnePointMutation(o.sup_functions[i], self.functions, self.supfun_terminals)
                                 variation_event_happened = True
 
-                            # correct for violation of constraints
-                            # if (self.fitness_function.EvaluateLength(o) > self.max_tree_size) or (o.sup_functions[i].GetHeight() < self.min_depth):
-                            #   o.sup_functions[i] = deepcopy(selected[i].sup_functions[i])
+                            if self.fitness_function.EvaluateLength(o) > self.max_tree_size:
+                                o.sup_functions[i] = deepcopy(selected[i].sup_functions[i])
 
                     self.fitness_function.Evaluate(o)
 
@@ -224,7 +223,7 @@ class pyNSGP:
                             o = Variation.OnePointMutation(o, self.functions, self.terminals)
                             variation_event_happened = True
 
-                    if (len(o.GetSubtree()) > self.max_tree_size) or (o.GetHeight() < self.min_depth):
+                    if len(o.GetSubtree()) > self.max_tree_size:
                         o = deepcopy(selected[i])
                     else:
                         self.fitness_function.Evaluate(o)
