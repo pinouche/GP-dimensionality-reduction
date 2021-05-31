@@ -68,7 +68,7 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators
                                                          multi_objective)
 
     dic_one_run["original_data_accuracy"] = org_avg_acc
-    dic_one_run["teacher_accuracy"] = (avg_acc, avg_reconstruction)
+    dic_one_run["teacher_data"] = (avg_acc, avg_reconstruction, corr)
     dic_one_run["gp_info_generations"] = info
     dic_one_run["front_last_generation"] = front_last_generation
 
