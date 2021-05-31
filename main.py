@@ -1,6 +1,7 @@
 import multiprocessing
 import pickle
 import os
+import numpy as np
 from sklearn.preprocessing import StandardScaler
 
 from autoencoder import get_hidden_layers
@@ -39,6 +40,10 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators
 
     low_dim_x = get_hidden_layers(model, train_data_x)[3]
     low_dim_test_x = get_hidden_layers(model, test_data_x)[3]
+
+    # get the correlation between the latent variables
+    corr = np.mean(np.corrcoef(low_dim_x, low_dim_x, rowvar=False)[low_dim_x.shape[1]:, :low_dim_x.shape[1]][0, 1:])
+    print("CORR BETWEEN THE AUTOENCODER TEACHER LATENT IS: ", corr)
 
     print("Computing for original dataset")
     org_avg_acc, org_std_acc = k_fold_valifation_accuracy_rf(test_data_x, test_data_y)
@@ -79,7 +84,7 @@ if __name__ == "__main__":
     mutation_rate = op_mutation_rate
     operators_rate = (crossover_rate, op_mutation_rate, mutation_rate)
 
-    num_of_runs = 1
+    num_of_runs = 10
     pop_size = 200
 
     # fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank_spearman", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
@@ -143,4 +148,4 @@ if __name__ == "__main__":
 
                             file_name = file_name + "_multi_objective=" + str(multi_objective)
 
-                            pickle.dump(results, open(file_name + ".p", "wb"))
+                            # pickle.dump(results, open(file_name + ".p", "wb"))
