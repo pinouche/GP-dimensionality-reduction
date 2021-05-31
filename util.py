@@ -3,7 +3,7 @@ from operator import itemgetter
 
 from sklearn.model_selection import KFold
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import balanced_accuracy_score
 from sklearn.preprocessing import StandardScaler
 
 from autoencoder import nn_autoencoder
@@ -25,7 +25,7 @@ def k_fold_valifation_accuracy_rf(data_x, data_y, n_splits=5):
         classifier.fit(x_train, y_train)
         predictions = classifier.predict(x_val)
 
-        accuracy = accuracy_score(y_val, predictions)
+        accuracy = balanced_accuracy_score(y_val, predictions)
         accuracy_list.append(accuracy)
 
     return np.mean(accuracy_list), np.std(accuracy_list)

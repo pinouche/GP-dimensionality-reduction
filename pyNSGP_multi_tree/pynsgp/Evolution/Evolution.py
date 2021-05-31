@@ -6,7 +6,7 @@ import keras
 
 from sklearn.model_selection import KFold
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import balanced_accuracy_score
 from sklearn.preprocessing import StandardScaler
 
 from pynsgp.Variation import Variation
@@ -472,7 +472,7 @@ class pyNSGP:
             classifier.fit(x_train, y_train)
             predictions = classifier.predict(x_val)
 
-            accuracy = accuracy_score(y_val, predictions)
+            accuracy = balanced_accuracy_score(y_val, predictions)
             accuracy_list.append(accuracy)
 
         return np.mean(accuracy_list), np.std(accuracy_list)

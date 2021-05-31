@@ -2,7 +2,7 @@ import numpy as np
 from copy import deepcopy
 import random
 from scipy.spatial.distance import pdist, squareform
-from scipy.stats import spearmanr, kendalltau
+from scipy.stats import kendalltau
 import keras
 from sklearn.preprocessing import StandardScaler
 
