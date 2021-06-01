@@ -28,9 +28,10 @@ def load_winequality_dataset():
     data_white = pd.read_csv(path_white_wine, delimiter=";")
 
     data = np.vstack((data_red, data_white))
-    data_x, data_y = data[:, :-1], data[:, -1]
+    data_x = data[:, :-1]
+    data_y = [0] * data_red.shape[0] + [1] * data_white.shape[0]
 
-    return data_x, data_y
+    return data_x, np.array(data_y)
 
 
 def load_credit_dataset():
