@@ -66,6 +66,33 @@ def load_observatory_dataset():
     return data_x, np.array(data_y)
 
 
+def load_ionosphere_dataset():
+    path = "./ionosphere/ionosphere.data"
+
+    data = np.array(pd.read_csv(path, delimiter=","))
+    data_y, data_x = data[:, -1], data[:, :-1]
+
+    return data_x, data_y
+
+
+def load_wine_dataset():
+    path = "./wine/wine.data"
+
+    data = np.array(pd.read_csv(path, delimiter=","))
+    data_y, data_x = data[:, 0], data[:, 1:]
+
+    return data_x, data_y
+
+
+def load_libras_dataset():
+    path = "./movement_libras/movement_libras.data"
+
+    data = np.array(pd.read_csv(path, delimiter=","))
+    data_y, data_x = data[:, -1], data[:, :-1]
+
+    return data_x, data_y
+
+
 def shuffle_data(x_data, y_data, seed):
     np.random.seed(seed)
     shuffle_list = np.arange(x_data.shape[0])
@@ -88,5 +115,14 @@ def load_data(dataset):
 
     elif dataset == "observatory":
         data_x, data_y = load_observatory_dataset()
+
+    elif dataset == "ionosphere":
+        data_x, data_y = load_ionosphere_dataset()
+
+    elif dataset == "wine":
+        data_x, data_y = load_wine_dataset()
+
+    elif dataset == "libras":
+        data_x, data_y = load_libras_dataset()
 
     return data_x, data_y
