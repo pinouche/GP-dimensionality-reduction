@@ -8,6 +8,8 @@ from sklearn.model_selection import KFold
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import balanced_accuracy_score
 from sklearn.preprocessing import StandardScaler
+from sklearn.kernel_ridge import KernelRidge
+from sklearn.multioutput import MultiOutputRegressor
 
 from pynsgp.Variation import Variation
 from pynsgp.Selection import Selection
@@ -273,7 +275,7 @@ class pyNSGP:
                 accuracy_champ_train, len_champ_train, tree_champ, x_low_train = self.get_information_from_front([elite], self.x_train, self.y_train)
                 accuracy_champ_test, len_champ_test, tree_champ, x_low_test = self.get_information_from_front([elite], self.x_test, self.y_test)
 
-                reconstruction_train_loss, reconstruction_test_loss = self.neural_decoder_fitness(x_low_train, x_low_test)
+                reconstruction_train_loss, reconstruction_test_loss = self.reconstruction_multi_output(x_low_train, x_low_test)
 
                 if tree_champ.num_sub_functions > 0:
                     tree_champ = tree_champ.sub_functions
@@ -292,7 +294,7 @@ class pyNSGP:
                         for individual in front_non_duplicate:
                             accuracy_train, length, tree, x_low_train = self.get_information_from_front([individual], self.x_train, self.y_train)
                             accuracy_test, length, tree, x_low_test = self.get_information_from_front([individual], self.x_test, self.y_test)
-                            reconstruction_train_loss, reconstruction_test_loss = self.neural_decoder_fitness(x_low_train, x_low_test)
+                            reconstruction_train_loss, reconstruction_test_loss = self.reconstruction_multi_output(x_low_train, x_low_test)
 
                             if tree.num_sub_functions > 0:
                                 tree = tree.sub_functions
@@ -478,44 +480,65 @@ class pyNSGP:
         return np.mean(accuracy_list), np.std(accuracy_list)
 
     # fitness function that trains a decoder to use as the fitness
-    def neural_decoder_fitness(self, x_low_train, x_low_test):
+    # def neural_decoder_fitness(self, x_low_train, x_low_test):
+    #
+    #     scaler = StandardScaler()
+    #     scaler.fit(x_low_train)
+    #     x_low_train = scaler.transform(x_low_train)
+    #     x_low_test = scaler.transform(x_low_test)
+    #
+    #     x_train_org = self.x_train
+    #     x_test_org = self.x_test
+    #
+    #     scaler = StandardScaler()
+    #     scaler.fit(x_train_org)
+    #     x_train_org = scaler.transform(x_train_org)
+    #     x_test_org = scaler.transform(x_test_org)
+    #
+    #     input_size = x_train_org.shape[1]
+    #     latent_size = x_low_train.shape[1]
+    #     initializer = keras.initializers.glorot_normal()
+    #
+    #     model = keras.models.Sequential([
+    #
+    #         keras.layers.Dense(int((input_size + latent_size) / 4), activation="elu", use_bias=True,
+    #                            trainable=True, kernel_initializer=initializer),
+    #
+    #         keras.layers.Dense(int((input_size + latent_size) / 2), activation="elu", use_bias=True,
+    #                            trainable=True, kernel_initializer=initializer),
+    #
+    #         keras.layers.Dense(input_size, activation=keras.activations.linear, use_bias=False,
+    #                            trainable=True, kernel_initializer=initializer)
+    #     ])
+    #
+    #     adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False)
+    #     model.compile(optimizer=adam, loss='mse', metrics=['mse'])
+    #
+    #     model_info = model.fit(x_low_train, x_train_org, batch_size=32, epochs=200, verbose=False, validation_data=(x_low_test, x_test_org))
+    #     training_loss = model_info.history["loss"][-1]
+    #     test_loss = model_info.history["val_loss"][-1]
+    #
+    #     keras.backend.clear_session()
+    #
+    #     return training_loss, test_loss
+
+    def reconstruction_multi_output(self,  x_low_train, x_low_test):
 
         scaler = StandardScaler()
         scaler.fit(x_low_train)
         x_low_train = scaler.transform(x_low_train)
         x_low_test = scaler.transform(x_low_test)
 
-        x_train_org = self.x_train
-        x_test_org = self.x_test
+        x_train = self.x_train
+        x_test = self.x_test
 
-        scaler = StandardScaler()
-        scaler.fit(x_train_org)
-        x_train_org = scaler.transform(x_train_org)
-        x_test_org = scaler.transform(x_test_org)
+        model = KernelRidge(kernel='poly', degree=2)
+        est = MultiOutputRegressor(model)
+        est.fit(x_low_train, x_train)
+        preds_train = est.predict(x_low_train)
+        preds_test = est.predict(x_low_test)
 
-        input_size = x_train_org.shape[1]
-        latent_size = x_low_train.shape[1]
-        initializer = keras.initializers.glorot_normal()
+        train_reconstruction_error = np.mean((preds_train - x_train) ** 2)
+        test_reconstruction_error = np.mean((preds_test - x_test) ** 2)
 
-        model = keras.models.Sequential([
-
-            keras.layers.Dense(int((input_size + latent_size) / 4), activation="elu", use_bias=True,
-                               trainable=True, kernel_initializer=initializer),
-
-            keras.layers.Dense(int((input_size + latent_size) / 2), activation="elu", use_bias=True,
-                               trainable=True, kernel_initializer=initializer),
-
-            keras.layers.Dense(input_size, activation=keras.activations.linear, use_bias=False,
-                               trainable=True, kernel_initializer=initializer)
-        ])
-
-        adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False)
-        model.compile(optimizer=adam, loss='mse', metrics=['mse'])
-
-        model_info = model.fit(x_low_train, x_train_org, batch_size=32, epochs=200, verbose=False, validation_data=(x_low_test, x_test_org))
-        training_loss = model_info.history["loss"][-1]
-        test_loss = model_info.history["val_loss"][-1]
-
-        keras.backend.clear_session()
-
-        return training_loss, test_loss
+        return train_reconstruction_error, test_reconstruction_error

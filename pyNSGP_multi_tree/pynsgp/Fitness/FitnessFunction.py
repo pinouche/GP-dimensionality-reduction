@@ -3,8 +3,6 @@ from copy import deepcopy
 import random
 from scipy.spatial.distance import pdist, squareform
 from scipy.stats import kendalltau
-import keras
-from sklearn.preprocessing import StandardScaler
 
 from pynsgp.Nodes.SymbolicRegressionNodes import FeatureNode
 from pynsgp.Nodes.MultiTreeRepresentation import MultiTreeIndividual
@@ -31,11 +29,8 @@ class SymbolicRegressionFitness:
         individual.objectives = []
 
         if "manifold_fitness" in self.fitness:
-            obj1_train = self.stress_cost(self.X_train, individual, 128)
-            obj1_test = self.stress_cost(self.X_test, individual, 128)
-        elif self.fitness == "neural_decoder_fitness":
-            obj1_train = self.neural_decoder_fitness(self.X_train, individual, self.evaluations)
-            obj1_test = self.neural_decoder_fitness(self.X_test, individual, self.evaluations)
+            obj1_train = self.stress_cost(self.X_train, individual, 64)
+            obj1_test = self.stress_cost(self.X_test, individual, 64)
         elif self.fitness == "autoencoder_teacher_fitness" or self.fitness == "gp_autoencoder_fitness":
             obj1_train = self.EvaluateMeanSquaredError(self.X_train, self.y_train, individual, True)
             obj1_test = self.EvaluateMeanSquaredError(self.X_test, self.y_test, individual, False)
@@ -98,7 +93,7 @@ class SymbolicRegressionFitness:
         return fit_error
 
     # fitness function to directly evolve trees to do dimensionality reduction
-    def stress_cost(self, data, individual, batch_size=128):
+    def stress_cost(self, data, individual, batch_size=64):
 
         assert batch_size <= self.X_train.shape[0]
 
@@ -115,15 +110,6 @@ class SymbolicRegressionFitness:
 
         if self.fitness == "manifold_fitness_absolute":
             fitness = np.sum(np.abs(similarity_matrix_batch - similarity_matrix_pred))
-        elif self.fitness == "manifold_fitness_rank_footrule":
-
-            full_similirarity_matrix_org = squareform(similarity_matrix_batch)
-            full_similirarity_matrix_pred = squareform(similarity_matrix_pred)
-
-            ranks_true = np.argsort(full_similirarity_matrix_org, axis=1)
-            ranks_pred = np.argsort(full_similirarity_matrix_pred, axis=1)
-
-            fitness = np.sum(np.abs(ranks_true-ranks_pred))
 
         elif self.fitness == "manifold_fitness_rank_spearman":
 
@@ -140,46 +126,6 @@ class SymbolicRegressionFitness:
             fitness /= batch_size
 
         return fitness
-
-    # fitness function that trains a decoder to use as the fitness
-    def neural_decoder_fitness(self, data, individual, seed):
-
-        output = individual.GetOutput(data)
-
-        scaler = StandardScaler()
-        output = scaler.fit_transform(output)
-
-        input_size = data.shape[1]
-        latent_size = output.shape[1]
-        initializer = keras.initializers.glorot_normal(seed=seed)
-
-        model = keras.models.Sequential([
-
-            keras.layers.Dense(int((input_size + latent_size) / 4), activation="elu", use_bias=True,
-                               trainable=True, kernel_initializer=initializer, input_shape=(latent_size,)),
-            # latent_layer
-            keras.layers.Dense(int((input_size + latent_size) / 2), activation="elu", use_bias=True,
-                               trainable=True, kernel_initializer=initializer),
-
-            keras.layers.Dense(input_size, activation=keras.activations.linear, use_bias=False,
-                               trainable=True, kernel_initializer=initializer)
-        ])
-
-        adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False)
-        model.compile(optimizer=adam, loss='mse', metrics=['mse'])
-
-        model_info = model.fit(output, data, batch_size=32, epochs=200, verbose=False)
-
-        argmin = np.argmin(model_info.history["loss"])
-        loss = np.mean(model_info.history["loss"][argmin-1:argmin+1])
-
-        keras.backend.clear_session()
-
-        if loss == np.nan:
-            print("TRUE")
-            loss = np.inf
-
-        return loss
 
     def EvaluateMeanSquaredError(self, data_x, data_y, individual, train=True):
         if isinstance(individual, MultiTreeIndividual):

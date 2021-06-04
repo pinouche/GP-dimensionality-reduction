@@ -2,6 +2,8 @@ from pynsgp.Nodes.SymbolicRegressionNodes import *
 from pynsgp.SKLearnInterface import pyNSGPEstimator as NSGP
 
 from sklearn.preprocessing import StandardScaler
+from sklearn.kernel_ridge import KernelRidge
+from sklearn.multioutput import MultiOutputRegressor
 import keras
 
 from util import k_fold_valifation_accuracy_rf
@@ -32,7 +34,7 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
         use_linear_scaling = False
 
     estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y,
-                     pop_size=pop_size, max_generations=50, verbose=True, max_tree_size=50,
+                     pop_size=pop_size, max_generations=2, verbose=True, max_tree_size=50,
                      crossover_rate=operators_rate[0], mutation_rate=operators_rate[1], op_mutation_rate=operators_rate[2], min_depth=1,
                      initialization_max_tree_height=init_max_tree_height, tournament_size=2, use_linear_scaling=use_linear_scaling,
                      use_erc=True, second_objective=second_objective,
@@ -65,7 +67,7 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, low_d
     num_sample_train = train_data_x.shape[0]
     num_sample_test = test_data_x.shape[0]
 
-    generations = 10
+    generations = 2
     low_dim_train_array = np.empty((generations, num_latent_dimensions, num_sample_train))
     low_dim_test_array = np.empty((generations, num_latent_dimensions, num_sample_test))
     individuals = [[] for _ in range(num_latent_dimensions)]
@@ -111,7 +113,7 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, low_d
 
         avg_acc_train, _ = k_fold_valifation_accuracy_rf(x_train_low, train_data_y)
         avg_acc_test, _ = k_fold_valifation_accuracy_rf(x_test_low, test_data_y)
-        train_reconstrution_loss, test_reconstruction_loss = neural_decoder_fitness(x_train_low, x_test_low, train_data_x, test_data_x)
+        train_reconstrution_loss, test_reconstruction_loss = reconstruction_multi_output(x_train_low, x_test_low, train_data_x, test_data_x)
 
         info[0].append((fitness_train[index], avg_acc_train, train_reconstrution_loss, summed_length[index], np.transpose(individuals)[index]))
         info[1].append((fitness_test[index], avg_acc_test, test_reconstruction_loss, summed_length[index], np.transpose(individuals)[index]))
@@ -177,35 +179,54 @@ def get_non_duplicate_front(estimator):
     return front_non_duplicate
 
 
-def neural_decoder_fitness(x_low_train, x_low_test, x_train, x_test):
+# def neural_decoder_fitness(x_low_train, x_low_test, x_train, x_test):
+#
+#     scaler = StandardScaler()
+#     scaler.fit(x_low_train)
+#     x_low_train = scaler.transform(x_low_train)
+#     x_low_test = scaler.transform(x_low_test)
+#
+#     input_size = x_train.shape[1]
+#     latent_size = x_low_train.shape[1]
+#     initializer = keras.initializers.glorot_normal()
+#
+#     model = keras.models.Sequential([
+#
+#         # latent_layer
+#         keras.layers.Dense(int((input_size + latent_size) / 2), activation="elu", use_bias=True,
+#                            trainable=True, kernel_initializer=initializer, input_shape=(latent_size,)),
+#
+#         keras.layers.Dense(input_size, activation=keras.activations.linear, use_bias=False,
+#                            trainable=True, kernel_initializer=initializer)
+#     ])
+#
+#     adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False)
+#     model.compile(optimizer=adam, loss='mse', metrics=['mse'])
+#
+#     model_info = model.fit(x_low_train, x_train, batch_size=32, epochs=200, verbose=False, validation_data=(x_low_test, x_test))
+#     training_loss = model_info.history["loss"][-1]
+#     test_loss = model_info.history["val_loss"][-1]
+#
+#     keras.backend.clear_session()
+#
+#     return training_loss, test_loss
+
+
+def reconstruction_multi_output(x_low_train, x_low_test, x_train, x_test):
 
     scaler = StandardScaler()
     scaler.fit(x_low_train)
     x_low_train = scaler.transform(x_low_train)
     x_low_test = scaler.transform(x_low_test)
 
-    input_size = x_train.shape[1]
-    latent_size = x_low_train.shape[1]
-    initializer = keras.initializers.glorot_normal()
+    model = KernelRidge(kernel='poly', degree=2)
+    est = MultiOutputRegressor(model)
+    est.fit(x_low_train, x_train)
+    preds_train = est.predict(x_low_train)
+    preds_test = est.predict(x_low_test)
 
-    model = keras.models.Sequential([
+    train_reconstruction_error = np.mean((preds_train - x_train) ** 2)
+    test_reconstruction_error = np.mean((preds_test - x_test) ** 2)
 
-        # latent_layer
-        keras.layers.Dense(int((input_size + latent_size) / 2), activation="elu", use_bias=True,
-                           trainable=True, kernel_initializer=initializer, input_shape=(latent_size,)),
-
-        keras.layers.Dense(input_size, activation=keras.activations.linear, use_bias=False,
-                           trainable=True, kernel_initializer=initializer)
-    ])
-
-    adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False)
-    model.compile(optimizer=adam, loss='mse', metrics=['mse'])
-
-    model_info = model.fit(x_low_train, x_train, batch_size=32, epochs=200, verbose=False, validation_data=(x_low_test, x_test))
-    training_loss = model_info.history["loss"][-1]
-    test_loss = model_info.history["val_loss"][-1]
-
-    keras.backend.clear_session()
-
-    return training_loss, test_loss
+    return train_reconstruction_error, test_reconstruction_error
 

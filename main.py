@@ -43,7 +43,6 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators
 
     # get the correlation between the latent variables
     corr = np.mean(np.corrcoef(low_dim_x, low_dim_x, rowvar=False)[low_dim_x.shape[1]:, :low_dim_x.shape[1]][0, 1:])
-    print("CORR BETWEEN THE AUTOENCODER TEACHER LATENT IS: ", corr)
 
     print("Computing for original dataset")
     org_avg_acc, org_std_acc = k_fold_valifation_accuracy_rf(test_data_x, test_data_y)
@@ -84,13 +83,13 @@ if __name__ == "__main__":
     mutation_rate = op_mutation_rate
     operators_rate = (crossover_rate, op_mutation_rate, mutation_rate)
 
-    num_of_runs = 10
+    num_of_runs = 1
     pop_size = 200
 
-    # fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank_spearman", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
-    fitness_list = ["autoencoder_teacher_fitness"]
+    fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank_spearman", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
+    # fitness_list = ["manifold_fitness_rank_spearman"]
 
-    for dataset in ["segmentation"]:
+    for dataset in ["wine"]:
         for second_objective in ["length"]:
             for fitness in fitness_list:
 
