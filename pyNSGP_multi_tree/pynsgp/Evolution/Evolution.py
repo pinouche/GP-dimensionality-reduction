@@ -2,14 +2,15 @@ import numpy as np
 from numpy.random import random, randint
 import time
 from copy import deepcopy
-import keras
 
-from sklearn.model_selection import KFold
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import balanced_accuracy_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.multioutput import MultiOutputRegressor
+
+from scipy.spatial.distance import pdist, squareform
+from scipy.stats import kendalltau
 
 from pynsgp.Variation import Variation
 from pynsgp.Selection import Selection
@@ -269,49 +270,46 @@ class pyNSGP:
                 print('elite:', self.fitness_function.elite.GetHumanExpression())
 
             # compute information from the champion HERE
-            if self.use_multi_tree:
-                elite = self.fitness_function.elite
+            if self.generations == self.max_generations - 1:
+                if self.multi_objective:
+                    front_non_duplicate = self.get_non_duplicate_front(self.latest_front)
+                else:
+                    front_non_duplicate = [self.fitness_function.elite]
 
-                accuracy_champ_train, len_champ_train, tree_champ, x_low_train = self.get_information_from_front([elite], self.x_train, self.y_train)
-                accuracy_champ_test, len_champ_test, tree_champ, x_low_test = self.get_information_from_front([elite], self.x_test, self.y_test)
+                front_information = []
 
-                reconstruction_train_loss, reconstruction_test_loss = self.reconstruction_multi_output(x_low_train, x_low_test)
+                for ind in front_non_duplicate:
+                    if self.use_multi_tree:
 
-                if tree_champ.num_sub_functions > 0:
-                    tree_champ = tree_champ.sub_functions
+                        len_champ, tree_champ, x_low_train = self.get_information_from_front([ind], self.x_train, self.y_train)
+                        len_champ_test, tree_champ, x_low_test = self.get_information_from_front([ind], self.x_test, self.y_test)
 
-                print("TRAIN: ", self.fitness_function.elite.objectives[0][0], "TEST: ", self.fitness_function.elite.objectives[0][1])
-                list_info[0].append((self.fitness_function.elite.objectives[0][0], accuracy_champ_train, reconstruction_train_loss, len_champ_train,
-                                     tree_champ))
-                list_info[1].append((self.fitness_function.elite.objectives[0][1], accuracy_champ_test, reconstruction_test_loss, len_champ_train,
-                                     tree_champ))
+                        # evaluate the final objective functions
+                        acc_train, acc_test = self.k_fold_valifation_accuracy_rf(x_low_train, x_low_test)
+                        reconstruction_train_loss, reconstruction_test_loss = self.reconstruction_multi_output(x_low_train, x_low_test)
 
-                if self.generations == self.max_generations - 1:
-                    if self.multi_objective:
-                        front_non_duplicate = self.get_non_duplicate_front(self.latest_front)
+                        stress_loss_train, rank_loss_train = self.stress_cost(x_low_train, self.x_train)
+                        stress_loss_test, rank_loss_test = self.stress_cost(x_low_test, self.x_test)
 
-                        front_information = []
-                        for individual in front_non_duplicate:
-                            accuracy_train, length, tree, x_low_train = self.get_information_from_front([individual], self.x_train, self.y_train)
-                            accuracy_test, length, tree, x_low_test = self.get_information_from_front([individual], self.x_test, self.y_test)
-                            reconstruction_train_loss, reconstruction_test_loss = self.reconstruction_multi_output(x_low_train, x_low_test)
+                        if tree_champ.num_sub_functions > 0:
+                            tree_champ = tree_champ.sub_functions
 
-                            if tree.num_sub_functions > 0:
-                                tree = tree.sub_functions
+                        print("TRAIN: ", self.fitness_function.elite.objectives[0][0], "TEST: ", self.fitness_function.elite.objectives[0][1])
+                        list_info[0].append((self.fitness_function.elite.objectives[0][0], acc_train, reconstruction_train_loss, stress_loss_train,
+                                             rank_loss_train, len_champ, tree_champ))
+                        list_info[1].append((self.fitness_function.elite.objectives[0][1], acc_test, reconstruction_test_loss, stress_loss_test,
+                                             rank_loss_test, len_champ, tree_champ))
 
-                            front_information.append((accuracy_test, reconstruction_test_loss, length, tree))
+                        front_information.append(list_info)
 
-                        self.front_information = front_information
                     else:
-                        self.front_information = None
+                        list_info.append(self.fitness_function.elite)
+                        front_information.append(list_info)
 
-            else:
-                list_info.append(self.fitness_function.elite)
+                self.front_information = front_information
 
             self.population = new_population
             self.generations = self.generations + 1
-
-        self.info_generations = list_info
 
     def FastNonDominatedSorting(self, population):
         rank_counter = 0
@@ -454,73 +452,22 @@ class pyNSGP:
         length = len_programs[0]
         champion_representation = individuals[0]
 
-        avg_acc, _ = self.k_fold_valifation_accuracy_rf(x_low, y)
+        return length, champion_representation, x_low
 
-        return avg_acc, length, champion_representation, x_low
+    def k_fold_valifation_accuracy_rf(self, x_low_train, x_low_test):
 
-    def k_fold_valifation_accuracy_rf(self, data_x, data_y, n_splits=5):
-        accuracy_list = []
-        kf = KFold(n_splits=n_splits, shuffle=True, random_state=0)
-        for train_indices, val_indices in kf.split(data_x):
-            x_train, y_train = data_x[train_indices], data_y[train_indices]
-            x_val, y_val = data_x[val_indices], data_y[val_indices]
+        y_train = self.y_train
+        y_test = self.y_test
 
-            scaler = StandardScaler()
-            scaler = scaler.fit(x_train)
-            x_train = scaler.transform(x_train)
-            x_val = scaler.transform(x_val)
+        classifier = RandomForestClassifier()
+        classifier.fit(x_low_train, y_train)
+        predictions_train = classifier.predict(x_low_train)
+        predictions_test = classifier.predict(x_low_test)
 
-            classifier = RandomForestClassifier()
-            classifier.fit(x_train, y_train)
-            predictions = classifier.predict(x_val)
+        accuracy_train = balanced_accuracy_score(y_train, predictions_train)
+        accuracy_test = balanced_accuracy_score(y_test, predictions_test)
 
-            accuracy = balanced_accuracy_score(y_val, predictions)
-            accuracy_list.append(accuracy)
-
-        return np.mean(accuracy_list), np.std(accuracy_list)
-
-    # fitness function that trains a decoder to use as the fitness
-    # def neural_decoder_fitness(self, x_low_train, x_low_test):
-    #
-    #     scaler = StandardScaler()
-    #     scaler.fit(x_low_train)
-    #     x_low_train = scaler.transform(x_low_train)
-    #     x_low_test = scaler.transform(x_low_test)
-    #
-    #     x_train_org = self.x_train
-    #     x_test_org = self.x_test
-    #
-    #     scaler = StandardScaler()
-    #     scaler.fit(x_train_org)
-    #     x_train_org = scaler.transform(x_train_org)
-    #     x_test_org = scaler.transform(x_test_org)
-    #
-    #     input_size = x_train_org.shape[1]
-    #     latent_size = x_low_train.shape[1]
-    #     initializer = keras.initializers.glorot_normal()
-    #
-    #     model = keras.models.Sequential([
-    #
-    #         keras.layers.Dense(int((input_size + latent_size) / 4), activation="elu", use_bias=True,
-    #                            trainable=True, kernel_initializer=initializer),
-    #
-    #         keras.layers.Dense(int((input_size + latent_size) / 2), activation="elu", use_bias=True,
-    #                            trainable=True, kernel_initializer=initializer),
-    #
-    #         keras.layers.Dense(input_size, activation=keras.activations.linear, use_bias=False,
-    #                            trainable=True, kernel_initializer=initializer)
-    #     ])
-    #
-    #     adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False)
-    #     model.compile(optimizer=adam, loss='mse', metrics=['mse'])
-    #
-    #     model_info = model.fit(x_low_train, x_train_org, batch_size=32, epochs=200, verbose=False, validation_data=(x_low_test, x_test_org))
-    #     training_loss = model_info.history["loss"][-1]
-    #     test_loss = model_info.history["val_loss"][-1]
-    #
-    #     keras.backend.clear_session()
-    #
-    #     return training_loss, test_loss
+        return accuracy_train, accuracy_test
 
     def reconstruction_multi_output(self,  x_low_train, x_low_test):
 
@@ -542,3 +489,27 @@ class pyNSGP:
         test_reconstruction_error = np.mean((preds_test - x_test) ** 2)
 
         return train_reconstruction_error, test_reconstruction_error
+
+    def stress_cost(self, x_low, x_original):
+
+        # compute distances on the original data
+        x_dist = pdist(x_original, 'euclidean')
+        x_low_dist = pdist(x_low, 'euclidean')
+
+        # stress cost
+        fitness_absolute = np.sum(np.abs(x_dist - x_low_dist))
+
+        # spearman cost
+        full_x_dist = squareform(x_dist)
+        full_x_low_dist = squareform(x_low_dist)
+
+        fitness_spearman = 0
+        for index in range(full_x_dist.shape[0]):
+            corr = kendalltau(full_x_dist[index], full_x_low_dist[index])[0]*-1
+            if np.isnan(corr):
+                corr = 1
+            fitness_spearman += corr
+
+        fitness_spearman /= full_x_dist.shape[0]
+
+        return fitness_absolute, fitness_spearman

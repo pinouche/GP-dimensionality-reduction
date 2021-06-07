@@ -15,7 +15,6 @@ from load_data import shuffle_data
 
 def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators_rate, share_multi_tree=False, second_objective="length",
                      fitness="autoencoder_teacher_fitness", pop_size=100, multi_objective=False, one_mutation_on_average=False):
-
     print("COMPUTING FOR RUN NUMBER: " + str(seed))
 
     dic_one_run = {}
@@ -53,22 +52,19 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators
 
     print("Computing for method GP")
     if share_multi_tree is not None:
-        info, front_last_generation = multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y,
-                                                                    test_data_x, low_dim_test_x, test_data_y,
-                                                                    operators_rate,
-                                                                    share_multi_tree, second_objective, fitness,
-                                                                    pop_size, multi_objective)
+        front_last_generation = multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, low_dim_test_x, test_data_y,
+                                                              operators_rate,
+                                                              share_multi_tree, second_objective, fitness,
+                                                              pop_size, multi_objective)
     else:
         # here, front_last_generation is None
-        info, front_last_generation = gp_surrogate_model(train_data_x, low_dim_x, train_data_y,
-                                                         test_data_x, low_dim_test_x, test_data_y,
-                                                         operators_rate,
-                                                         second_objective, int(pop_size/num_latent_dimensions),
-                                                         multi_objective)
+        front_last_generation = gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, low_dim_test_x, test_data_y,
+                                                   operators_rate,
+                                                   second_objective, int(pop_size / num_latent_dimensions),
+                                                   multi_objective)
 
     dic_one_run["original_data_accuracy"] = org_avg_acc
     dic_one_run["teacher_data"] = (avg_acc, avg_reconstruction, corr)
-    dic_one_run["gp_info_generations"] = info
     dic_one_run["front_last_generation"] = front_last_generation
 
     data_struc["run_number_" + str(seed)] = dic_one_run
@@ -99,7 +95,7 @@ if __name__ == "__main__":
                 elif fitness == "gp_autoencoder_fitness":
                     list_gp_method = [True]  # for gp-autoencoder fitness, we want to use the shared multi-tree GP representation
                 elif fitness == "autoencoder_teacher_fitness":  # we only want vanilla GP when using teacher model
-                    list_gp_method = [None, False]
+                    list_gp_method = [False]
                 else:
                     list_gp_method = [False]
 
@@ -119,8 +115,8 @@ if __name__ == "__main__":
 
                             p = [multiprocessing.Process(target=low_dim_accuracy,
                                                          args=(dataset, seed, return_dict, num_latent_dimensions, operators_rate, gp_method,
-                                                         second_objective, fitness, pop_size, multi_objective))
-                                                         for seed in range(num_of_runs)]
+                                                               second_objective, fitness, pop_size, multi_objective))
+                                 for seed in range(num_of_runs)]
 
                             for proc in p:
                                 proc.start()

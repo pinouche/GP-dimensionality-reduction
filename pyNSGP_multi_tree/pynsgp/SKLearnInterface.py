@@ -113,9 +113,9 @@ class pyNSGPEstimator(BaseEstimator, RegressorMixin):
         check_is_fitted(self, ['nsgp_'])
         return self.nsgp_.latest_front
 
-    def get_list_info(self):
-        check_is_fitted(self, ['nsgp_'])
-        return self.nsgp_.info_generations
+    # def get_list_info(self):
+    #     check_is_fitted(self, ['nsgp_'])
+    #     return self.nsgp_.info_generations
 
     def get_front_info(self):
         check_is_fitted(self, ['nsgp_'])

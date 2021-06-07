@@ -39,8 +39,6 @@ class SymbolicRegressionFitness:
 
         if self.second_objective == "length":
             obj2 = self.EvaluateLength(individual)
-        elif self.second_objective == "phi_model":
-            obj2 = self.EvaluatePHIsModel(individual)
 
         individual.objectives.append(obj2)
 
@@ -155,83 +153,59 @@ class SymbolicRegressionFitness:
             l = len(individual.GetSubtree())
         return l
 
-    def __EvaluatePHIsModelOfNormalTree(self, individual):
-        subtree = individual.GetSubtree()
-        n_nodes = len(subtree)
-        n_ops = 0
-        n_naops = 0
-        n_vars = 0
-        dimensions = set()
-        n_constants = 0
-        for n in subtree:
-            if n.arity > 0:
-                n_ops += 1
-                if n.is_not_arithmetic:
-                    n_naops += 1
-            else:
-                str_repr = str(n)
-                if str_repr[0] == 'x':
-                    n_vars += 1
-                    idx = int(str_repr[1:len(str_repr)])
-                    dimensions.add(idx)
-                else:
-                    n_constants += 1
-        n_nacomp = individual.Count_n_nacomp()
-        n_dim = len(dimensions)
+    # def __EvaluatePHIsModelOfNormalTree(self, individual):
+    #     subtree = individual.GetSubtree()
+    #     n_nodes = len(subtree)
+    #     n_ops = 0
+    #     n_naops = 0
+    #     n_vars = 0
+    #     dimensions = set()
+    #     n_constants = 0
+    #     for n in subtree:
+    #         if n.arity > 0:
+    #             n_ops += 1
+    #             if n.is_not_arithmetic:
+    #                 n_naops += 1
+    #         else:
+    #             str_repr = str(n)
+    #             if str_repr[0] == 'x':
+    #                 n_vars += 1
+    #                 idx = int(str_repr[1:len(str_repr)])
+    #                 dimensions.add(idx)
+    #             else:
+    #                 n_constants += 1
+    #     n_nacomp = individual.Count_n_nacomp()
+    #     n_dim = len(dimensions)
+    #
+    #     result = self._ComputeInterpretabilityScore(n_dim, n_vars,
+    #                                                 n_constants, n_nodes, n_ops, n_naops, n_nacomp)
+    #     result = -1 * result
+    #
+    #     return result
 
-        '''
-                print('-------------------')
-                print(subtree)
-                print('nodes:',n_nodes)
-                print('dimensions', n_dim)
-                print('variables', n_vars)
-                print('constants', n_constants)
-                print('ops', n_ops)
-                print('naops', n_naops)
-                print('nacomp', n_nacomp)
-                print('------------------')
-                '''
-
-        result = self._ComputeInterpretabilityScore(n_dim, n_vars,
-                                                    n_constants, n_nodes, n_ops, n_naops, n_nacomp)
-        result = -1 * result
-
-        return result
-
-    def __EvaluatePHIsModelOfMultiTree(self, individual):
-        '''
-                we have two options here, one is to assume that the user can understand
-                the parts, and then the total from them. In that case, we just compute
-                phi for each sub_function and each sup_function.
-
-                The other would be that, instead, each sup_function must be interpreted as a whole
-                of itself + sub_functions. 
-                To implement that, we can create a temp sup_function where, each time we find a FeatureNode, 
-                we replace that with a clone of the sub_function it represents.
-                
-                I assume people are smart and go with the first option.
-                '''
-        phis = list()
-        for sup_fun in individual.sup_functions:
-            partial_phi = self.__EvaluatePHIsModelOfNormalTree(sup_fun)
-            phis.append(partial_phi)
-        for sub_fun in individual.sub_functions:
-            partial_phi = self.__EvaluatePHIsModelOfNormalTree(sub_fun)
-            phis.append(partial_phi)
-        phi = np.sum(phis)
-        return phi
-
-    def EvaluatePHIsModel(self, individual):
-        if isinstance(individual, MultiTreeIndividual):
-            phi = self.__EvaluatePHIsModelOfMultiTree(individual)
-        else:
-            phi = self.__EvaluatePHIsModelOfNormalTree(individual)
-
-        return phi
-
-    def _ComputeInterpretabilityScore(self, n_dim, n_vars, n_const, n_nodes, n_ops, na_ops, na_comp):
-        # correctness weighted by confidence:
-        features = [n_nodes, n_ops, na_ops, na_comp]
-        coeffs = [-0.00195041, -0.00502375, -0.03351907, -0.04472121]
-        result = np.sum(np.multiply(features, coeffs)) * 100
-        return result
+    # def __EvaluatePHIsModelOfMultiTree(self, individual):
+    #
+    #     phis = list()
+    #     for sup_fun in individual.sup_functions:
+    #         partial_phi = self.__EvaluatePHIsModelOfNormalTree(sup_fun)
+    #         phis.append(partial_phi)
+    #     for sub_fun in individual.sub_functions:
+    #         partial_phi = self.__EvaluatePHIsModelOfNormalTree(sub_fun)
+    #         phis.append(partial_phi)
+    #     phi = np.sum(phis)
+    #     return phi
+    #
+    # def EvaluatePHIsModel(self, individual):
+    #     if isinstance(individual, MultiTreeIndividual):
+    #         phi = self.__EvaluatePHIsModelOfMultiTree(individual)
+    #     else:
+    #         phi = self.__EvaluatePHIsModelOfNormalTree(individual)
+    #
+    #     return phi
+    #
+    # def _ComputeInterpretabilityScore(self, n_dim, n_vars, n_const, n_nodes, n_ops, na_ops, na_comp):
+    #     # correctness weighted by confidence:
+    #     features = [n_nodes, n_ops, na_ops, na_comp]
+    #     coeffs = [-0.00195041, -0.00502375, -0.03351907, -0.04472121]
+    #     result = np.sum(np.multiply(features, coeffs)) * 100
+    #     return result

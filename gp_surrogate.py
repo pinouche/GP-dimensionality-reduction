@@ -4,7 +4,6 @@ from pynsgp.SKLearnInterface import pyNSGPEstimator as NSGP
 from sklearn.preprocessing import StandardScaler
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.multioutput import MultiOutputRegressor
-import keras
 
 from util import k_fold_valifation_accuracy_rf
 
@@ -49,10 +48,9 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
     else:
         estimator.fit(train_data_x, train_data_x, test_data_x, test_data_x)
 
-    info = estimator.get_list_info()
     front_information = estimator.get_front_info()
 
-    return info, front_information
+    return front_information
 
 
 def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, low_dim_test_x, test_data_y, operators_rate,
@@ -87,7 +85,8 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, low_d
 
         estimator.fit(train_data_x, low_dim_x[:, index], test_data_x, low_dim_test_x[:, index])
 
-        champions = estimator.get_list_info()
+        # here champions refer to front
+        champions = [estimator.get_front_info()[0]]
         fitness_train_list[index].append([c.objectives[0][0] for c in champions])
         fitness_test_list[index].append([c.objectives[0][1] for c in champions])
         individuals[index].append(champions)
@@ -118,7 +117,7 @@ def gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, low_d
         info[0].append((fitness_train[index], avg_acc_train, train_reconstrution_loss, summed_length[index], np.transpose(individuals)[index]))
         info[1].append((fitness_test[index], avg_acc_test, test_reconstruction_loss, summed_length[index], np.transpose(individuals)[index]))
 
-    return info, None
+    return info
 
 
 def get_single_tree_output(front, x):
@@ -177,39 +176,6 @@ def get_non_duplicate_front(estimator):
             front_non_duplicate.append(individual)
 
     return front_non_duplicate
-
-
-# def neural_decoder_fitness(x_low_train, x_low_test, x_train, x_test):
-#
-#     scaler = StandardScaler()
-#     scaler.fit(x_low_train)
-#     x_low_train = scaler.transform(x_low_train)
-#     x_low_test = scaler.transform(x_low_test)
-#
-#     input_size = x_train.shape[1]
-#     latent_size = x_low_train.shape[1]
-#     initializer = keras.initializers.glorot_normal()
-#
-#     model = keras.models.Sequential([
-#
-#         # latent_layer
-#         keras.layers.Dense(int((input_size + latent_size) / 2), activation="elu", use_bias=True,
-#                            trainable=True, kernel_initializer=initializer, input_shape=(latent_size,)),
-#
-#         keras.layers.Dense(input_size, activation=keras.activations.linear, use_bias=False,
-#                            trainable=True, kernel_initializer=initializer)
-#     ])
-#
-#     adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False)
-#     model.compile(optimizer=adam, loss='mse', metrics=['mse'])
-#
-#     model_info = model.fit(x_low_train, x_train, batch_size=32, epochs=200, verbose=False, validation_data=(x_low_test, x_test))
-#     training_loss = model_info.history["loss"][-1]
-#     test_loss = model_info.history["val_loss"][-1]
-#
-#     keras.backend.clear_session()
-#
-#     return training_loss, test_loss
 
 
 def reconstruction_multi_output(x_low_train, x_low_test, x_train, x_test):
