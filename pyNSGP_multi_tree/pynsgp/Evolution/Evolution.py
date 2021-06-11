@@ -271,9 +271,11 @@ class pyNSGP:
                 print('elite:', self.fitness_function.elite.GetHumanExpression())
 
             # compute information from the champion HERE
+            if self.use_multi_tree:
+                list_info[0].append((self.fitness_function.elite.objectives[0][0], self.fitness_function.elite.objectives[0][1]))
+
             if self.multi_objective:
                 front_non_duplicate = self.get_non_duplicate_front(self.latest_front)
-                list_info[0].append((self.fitness_function.elite.objectives[0][0], self.fitness_function.elite.objectives[0][1]))
             else:
                 front_non_duplicate = [self.fitness_function.elite]
 
