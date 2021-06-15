@@ -487,7 +487,7 @@ class pyNSGP:
         x_train = self.train_data_x_pca
         x_test = self.test_data_x_pca
 
-        model = KernelRidge(kernel='poly', degree=5)
+        model = KernelRidge(kernel='rbf')
         est = MultiOutputRegressor(model)
         est.fit(x_low_train, x_train)
         preds_train = est.predict(x_low_train)

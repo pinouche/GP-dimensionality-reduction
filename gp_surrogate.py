@@ -183,7 +183,7 @@ def reconstruction_multi_output(x_low_train, x_low_test, x_train, x_test):
     x_low_train = scaler.transform(x_low_train)
     x_low_test = scaler.transform(x_low_test)
 
-    model = KernelRidge(kernel='poly', degree=2)
+    model = KernelRidge(kernel='rbf')
     est = MultiOutputRegressor(model)
     est.fit(x_low_train, x_train)
     preds_train = est.predict(x_low_train)
