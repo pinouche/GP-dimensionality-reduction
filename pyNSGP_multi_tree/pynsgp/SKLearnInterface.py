@@ -3,7 +3,6 @@ from sklearn.utils.validation import check_array, check_is_fitted
 
 import inspect
 
-from pynsgp.Nodes.BaseNode import Node
 from pynsgp.Nodes.SymbolicRegressionNodes import *
 from pynsgp.Fitness.FitnessFunction import SymbolicRegressionFitness
 from pynsgp.Evolution.Evolution import pyNSGP
@@ -16,6 +15,8 @@ class pyNSGPEstimator(BaseEstimator, RegressorMixin):
                  y_train,
                  x_test,
                  y_test,
+                 train_data_x_pca,
+                 test_data_x_pca,
                  pop_size=100,
                  max_generations=100,
                  max_evaluations=-1,
@@ -45,7 +46,7 @@ class pyNSGPEstimator(BaseEstimator, RegressorMixin):
 
     def fit(self, X_train, Y_train, X_test, Y_test):
 
-        fitness_function = SymbolicRegressionFitness(X_train, Y_train, X_test, Y_test,
+        fitness_function = SymbolicRegressionFitness(X_train, Y_train, X_test, Y_test, self.train_data_x_pca, self.test_data_x_pca,
                                                      self.use_linear_scaling, second_objective=self.second_objective,
                                                      fitness=self.fitness)
 
@@ -67,6 +68,8 @@ class pyNSGPEstimator(BaseEstimator, RegressorMixin):
                       self.y_train,
                       self.x_test,
                       self.y_test,
+                      self.train_data_x_pca,
+                      self.test_data_x_pca,
                       pop_size=self.pop_size,
                       max_generations=self.max_generations,
                       max_time=self.max_time,

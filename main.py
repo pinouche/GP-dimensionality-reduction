@@ -8,9 +8,11 @@ from autoencoder import get_hidden_layers
 from util import train_base_model
 from util import k_fold_valifation_accuracy_rf
 from gp_surrogate import multi_tree_gp_surrogate_model
-from gp_surrogate import gp_surrogate_model
+#from gp_surrogate import gp_surrogate_model
 from load_data import load_data
 from load_data import shuffle_data
+
+from sklearn.decomposition import PCA
 
 
 def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators_rate, share_multi_tree=False, second_objective="length",
@@ -34,37 +36,43 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators
     train_data_x = scaler.transform(train_data_x)
     test_data_x = scaler.transform(test_data_x)
 
-    # get the low dimensional representation of the data
-    model = train_base_model(train_data_x, seed, num_latent_dimensions)
+    # PCA tansformation of the original data
+    est = PCA(n_components=train_data_x.shape[1])
+    est.fit(train_data_x)
+    explained_variance_mask = np.cumsum(est.explained_variance_ratio_) >= 0.95
+    num_components = list(explained_variance_mask).index(True)
+    train_data_x_pca = est.transform(train_data_x)[:, :num_components]
+    test_data_x_pca = est.transform(test_data_x)[:, :num_components]
 
-    low_dim_x = get_hidden_layers(model, train_data_x)[3]
+    # get the low dimensional representation of the data
+    model = train_base_model(train_data_x, train_data_x_pca, seed, num_latent_dimensions)
+
+    low_dim_train_x = get_hidden_layers(model, train_data_x)[3]
     low_dim_test_x = get_hidden_layers(model, test_data_x)[3]
 
-    # get the correlation between the latent variables
-    corr = np.mean(np.corrcoef(low_dim_x, low_dim_x, rowvar=False)[low_dim_x.shape[1]:, :low_dim_x.shape[1]][0, 1:])
-
     print("Computing for original dataset")
-    org_avg_acc, org_std_acc = k_fold_valifation_accuracy_rf(test_data_x, test_data_y)
+    accuracy_train_org, accuracy_test_org = k_fold_valifation_accuracy_rf(train_data_x, test_data_x, train_data_y, test_data_y)
 
     print("Computing for teacher")
-    avg_acc, std_acc = k_fold_valifation_accuracy_rf(low_dim_test_x, test_data_y)
-    avg_reconstruction = model.evaluate(test_data_x.astype('float32'), test_data_x.astype('float32'), verbose=False)[0]
+    accuracy_train_teacher, accuracy_test_teacher = k_fold_valifation_accuracy_rf(low_dim_train_x, low_dim_test_x, train_data_y, test_data_y)
+    avg_reconstruction = model.evaluate(test_data_x.astype('float32'), test_data_x_pca.astype('float32'), verbose=False)[0]
 
     print("Computing for method GP")
     if share_multi_tree is not None:
-        front_last_generation = multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, low_dim_test_x, test_data_y,
+        front_last_generation = multi_tree_gp_surrogate_model(train_data_x, low_dim_train_x, train_data_y, test_data_x, low_dim_test_x, test_data_y,
+                                                              train_data_x_pca, test_data_x_pca,
                                                               operators_rate,
                                                               share_multi_tree, second_objective, fitness,
                                                               pop_size, multi_objective)
     else:
         # here, front_last_generation is None
-        front_last_generation = gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_data_x, low_dim_test_x, test_data_y,
+        front_last_generation = gp_surrogate_model(train_data_x, low_dim_train_x, train_data_y, test_data_x, low_dim_test_x, test_data_y,
                                                    operators_rate,
                                                    second_objective, int(pop_size / num_latent_dimensions),
                                                    multi_objective)
 
-    dic_one_run["original_data_accuracy"] = org_avg_acc
-    dic_one_run["teacher_data"] = (avg_acc, avg_reconstruction, corr)
+    dic_one_run["original_data_accuracy"] = accuracy_test_org
+    dic_one_run["teacher_data"] = (accuracy_test_teacher, avg_reconstruction)
     dic_one_run["front_last_generation"] = front_last_generation
 
     data_struc["run_number_" + str(seed)] = dic_one_run

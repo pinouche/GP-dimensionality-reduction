@@ -32,6 +32,8 @@ class pyNSGP:
         y_train,
         x_test,
         y_test,
+        train_data_x_pca,
+        test_data_x_pca,
         pop_size=500,
         crossover_rate=0.9,
         mutation_rate=0.1,
@@ -53,6 +55,8 @@ class pyNSGP:
         self.y_train = y_train
         self.x_test = x_test
         self.y_test = y_test
+        self.train_data_x_pca = train_data_x_pca
+        self.test_data_x_pca = test_data_x_pca
 
         self.pop_size = pop_size
         self.fitness_function = fitness_function
@@ -293,8 +297,8 @@ class pyNSGP:
                         reconstruction_train_loss, reconstruction_test_loss = self.reconstruction_multi_output(x_low_train, x_low_test)
                         neural_decoder_train_loss, neural_decoder_test_loss = self.neural_decoder_fitness(x_low_train, x_low_test)
 
-                        stress_loss_train, rank_loss_train = self.stress_cost(x_low_train, self.x_train)
-                        stress_loss_test, rank_loss_test = self.stress_cost(x_low_test, self.x_test)
+                        stress_loss_train, rank_loss_train = self.stress_cost(x_low_train, self.train_data_x_pca)
+                        stress_loss_test, rank_loss_test = self.stress_cost(x_low_test, self.test_data_x_pca)
 
                         if tree_champ.num_sub_functions > 0:
                             tree_champ = tree_champ.sub_functions
@@ -480,10 +484,10 @@ class pyNSGP:
         x_low_train = scaler.transform(x_low_train)
         x_low_test = scaler.transform(x_low_test)
 
-        x_train = self.x_train
-        x_test = self.x_test
+        x_train = self.train_data_x_pca
+        x_test = self.test_data_x_pca
 
-        model = KernelRidge(kernel='poly', degree=2)
+        model = KernelRidge(kernel='poly', degree=5)
         est = MultiOutputRegressor(model)
         est.fit(x_low_train, x_train)
         preds_train = est.predict(x_low_train)
@@ -501,27 +505,27 @@ class pyNSGP:
         x_low_train = scaler.transform(x_low_train)
         x_low_test = scaler.transform(x_low_test)
 
-        x_train_org = self.x_train
-        x_test_org = self.x_test
+        x_train_org = self.train_data_x_pca
+        x_test_org = self.test_data_x_pca
 
         scaler = StandardScaler()
         scaler.fit(x_train_org)
         x_train_org = scaler.transform(x_train_org)
         x_test_org = scaler.transform(x_test_org)
 
-        input_size = x_train_org.shape[1]
+        output_size = x_train_org.shape[1]
         latent_size = x_low_train.shape[1]
         initializer = keras.initializers.glorot_normal()
 
         model = keras.models.Sequential([
 
-            keras.layers.Dense(int((input_size + latent_size) / 4), activation="elu", use_bias=True,
+            keras.layers.Dense(int((output_size + latent_size) / 4), activation="elu", use_bias=True,
                                trainable=True, kernel_initializer=initializer),
 
-            keras.layers.Dense(int((input_size + latent_size) / 2), activation="elu", use_bias=True,
+            keras.layers.Dense(int((output_size + latent_size) / 2), activation="elu", use_bias=True,
                                trainable=True, kernel_initializer=initializer),
 
-            keras.layers.Dense(input_size, activation=keras.activations.linear, use_bias=False,
+            keras.layers.Dense(output_size, activation=keras.activations.linear, use_bias=False,
                                trainable=True, kernel_initializer=initializer)
         ])
 
@@ -536,10 +540,10 @@ class pyNSGP:
 
         return training_loss, test_loss
 
-    def stress_cost(self, x_low, x_original):
+    def stress_cost(self, x_low, x_original_pca):
 
         # compute distances on the original data
-        x_dist = pdist(x_original, 'euclidean')
+        x_dist = pdist(x_original_pca, 'euclidean')
         x_low_dist = pdist(x_low, 'euclidean')
 
         # stress cost

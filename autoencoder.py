@@ -19,7 +19,7 @@ def get_hidden_layers(model, data_x):
     return hidden_layers_list
 
 
-def nn_autoencoder(seed, input_size, latent_size):
+def nn_autoencoder(seed, input_size, output_size, latent_size):
     initializer = keras.initializers.glorot_normal(seed=seed)
 
     model = keras.models.Sequential([
@@ -37,13 +37,13 @@ def nn_autoencoder(seed, input_size, latent_size):
         keras.layers.Dense(latent_size, activation=keras.activations.linear, use_bias=False,
                            trainable=True, kernel_initializer=initializer),
 
-        keras.layers.Dense(int((input_size + latent_size) / 4), activation="elu", use_bias=True,
+        keras.layers.Dense(int((output_size + latent_size) / 4), activation="elu", use_bias=True,
                            trainable=True, kernel_initializer=initializer),
 
-        keras.layers.Dense(int((input_size + latent_size) / 2), activation="elu", use_bias=True,
+        keras.layers.Dense(int((output_size + latent_size) / 2), activation="elu", use_bias=True,
                            trainable=True, kernel_initializer=initializer),
 
-        keras.layers.Dense(input_size, activation=keras.activations.linear, use_bias=False,
+        keras.layers.Dense(output_size, activation=keras.activations.linear, use_bias=False,
                            trainable=True, kernel_initializer=initializer)
     ])
 

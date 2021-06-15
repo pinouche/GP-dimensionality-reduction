@@ -10,13 +10,15 @@ from pynsgp.Nodes.MultiTreeRepresentation import MultiTreeIndividual
 
 class SymbolicRegressionFitness:
 
-    def __init__(self, X_train, y_train, X_test, y_test, use_linear_scaling=True, second_objective="length",
+    def __init__(self, X_train, y_train, X_test, y_test, train_data_x_pca, test_data_x_pca, use_linear_scaling=True, second_objective="length",
                  fitness="autoencoder_teacher_fitness"):
 
         self.X_train = X_train
         self.y_train = y_train
         self.X_test = X_test
         self.y_test = y_test
+        self.train_data_x_pca = train_data_x_pca
+        self.test_data_x_pca = test_data_x_pca
         self.use_linear_scaling = use_linear_scaling
         self.second_objective = second_objective
         self.fitness = fitness
@@ -29,8 +31,8 @@ class SymbolicRegressionFitness:
         individual.objectives = []
 
         if "manifold_fitness" in self.fitness:
-            obj1_train = self.stress_cost(self.X_train, individual, 64)
-            obj1_test = self.stress_cost(self.X_test, individual, 64)
+            obj1_train = self.stress_cost(self.X_train, self.train_data_x_pca, individual, 64)
+            obj1_test = self.stress_cost(self.X_test, self.test_data_x_pca, individual, 64)
         elif self.fitness == "autoencoder_teacher_fitness" or self.fitness == "gp_autoencoder_fitness":
             obj1_train = self.EvaluateMeanSquaredError(self.X_train, self.y_train, individual, True)
             obj1_test = self.EvaluateMeanSquaredError(self.X_test, self.y_test, individual, False)
@@ -91,15 +93,15 @@ class SymbolicRegressionFitness:
         return fit_error
 
     # fitness function to directly evolve trees to do dimensionality reduction
-    def stress_cost(self, data, individual, batch_size=64):
+    def stress_cost(self, data, data_pca, individual, batch_size=64):
 
         assert batch_size <= self.X_train.shape[0]
 
         random.seed(self.evaluations)
         indices_vector = random.sample(range(data.shape[0]), batch_size)
 
-        # compute distances on the original data
-        similarity_matrix_batch = pdist(data[indices_vector], 'euclidean')
+        # compute distances on the original data (pca)
+        similarity_matrix_batch = pdist(data_pca[indices_vector], 'euclidean')
 
         prediction_batch = data[indices_vector]
         output = individual.GetOutput(prediction_batch)
