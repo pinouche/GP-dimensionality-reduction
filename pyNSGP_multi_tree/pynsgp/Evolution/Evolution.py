@@ -276,7 +276,8 @@ class pyNSGP:
 
             # compute information from the champion HERE
             if self.use_multi_tree:
-                list_info[0].append((self.fitness_function.elite.objectives[0][0], self.fitness_function.elite.objectives[0][1]))
+                list_info[0].append((self.fitness_function.elite.objectives[0][0], self.fitness_function.elite.objectives[0][1],
+                                     self.fitness_function.elite.objectives[1]))
 
             if self.multi_objective:
                 front_non_duplicate = self.get_non_duplicate_front(self.latest_front)
@@ -304,9 +305,9 @@ class pyNSGP:
                             tree_champ = tree_champ.sub_functions
 
                         list_info[1].append((acc_train, reconstruction_train_loss,
-                                             neural_decoder_train_loss, stress_loss_train, rank_loss_train, len_champ, tree_champ))
+                                             neural_decoder_train_loss, stress_loss_train, rank_loss_train, tree_champ))
                         list_info[2].append((acc_test, reconstruction_test_loss,
-                                             neural_decoder_test_loss, stress_loss_test, rank_loss_test, len_champ, tree_champ))
+                                             neural_decoder_test_loss, stress_loss_test, rank_loss_test, tree_champ))
 
                         front_information.append(list_info)
 
