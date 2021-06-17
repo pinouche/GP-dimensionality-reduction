@@ -6,9 +6,10 @@ import numpy as np
 
 class MultiTreeIndividual:
 
-    def __init__(self, num_sup_functions, num_sub_functions):
+    def __init__(self, num_sup_functions, num_sub_functions, fitness_function):
         self.num_sup_functions = int(num_sup_functions)
         self.num_sub_functions = int(num_sub_functions)
+        self.fitness_function = fitness_function
 
         self.sup_functions = list()
         self.sub_functions = list()
@@ -61,6 +62,8 @@ class MultiTreeIndividual:
                          ):
 
         for _ in range(self.num_sup_functions):
+            if self.fitness_function == "gp_autoencoder_fitness":
+                max_supfun_height = 3
             fun = Variation.GenerateRandomTree(supfun_functions, supfun_terminals, max_supfun_height, curr_height=0, method=method,
                                                min_depth=min_supfun_height)
             self.sup_functions.append(fun)
