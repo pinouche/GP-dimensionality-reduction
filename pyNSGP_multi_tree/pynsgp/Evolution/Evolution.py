@@ -9,6 +9,7 @@ from sklearn.metrics import balanced_accuracy_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.multioutput import MultiOutputRegressor
+from sklearn.model_selection import KFold
 
 from scipy.spatial.distance import pdist, squareform
 from scipy.stats import kendalltau
@@ -139,7 +140,7 @@ class pyNSGP:
                 curr_max_depth += 1
 
             if self.use_multi_tree:
-                g = MultiTreeIndividual(self.num_sup_functions, self.num_sub_functions)
+                g = MultiTreeIndividual(self.num_sup_functions, self.num_sub_functions, self.fitness_function.fitness)
                 g.InitializeRandom(
                     self.functions, self.supfun_terminals,
                     self.functions, self.terminals,
@@ -148,7 +149,7 @@ class pyNSGP:
                     max_subfun_height=curr_max_depth, min_subfun_height=self.min_depth,
                 )
 
-                f = MultiTreeIndividual(self.num_sup_functions, self.num_sub_functions)
+                f = MultiTreeIndividual(self.num_sup_functions, self.num_sub_functions, self.fitness_function.fitness)
                 f.InitializeRandom(
                     self.functions, self.supfun_terminals,
                     self.functions, self.terminals,
@@ -202,12 +203,17 @@ class pyNSGP:
 
                         # for the sup functions, we want each head/function to represent the same output dimension
                         for i in range(o.num_sup_functions):
+                            if self.fitness_function.fitness == "gp_autoencoder_fitness":
+                                max_init_height = 3
+                            else:
+                                max_init_height = self.initialization_max_tree_height
+
                             if random() < self.crossover_rate:
                                 o.sup_functions[i] = Variation.SubtreeCrossover(o.sup_functions[i], selected[randint(self.pop_size)].sup_functions[i])
                                 variation_event_happened = True
                             elif random() < self.mutation_rate:
                                 o.sup_functions[i] = Variation.SubtreeMutation(o.sup_functions[i], self.functions, self.supfun_terminals,
-                                                                               max_height=self.initialization_max_tree_height)
+                                                                               max_height=max_init_height)
                                 variation_event_happened = True
                             elif random() < self.op_mutation_rate:
                                 o.sup_functions[i] = Variation.OnePointMutation(o.sup_functions[i], self.functions, self.supfun_terminals)
@@ -290,8 +296,8 @@ class pyNSGP:
                 for ind in front_non_duplicate:
                     if self.use_multi_tree:
 
-                        len_champ, tree_champ, x_low_train = self.get_information_from_front([ind], self.x_train, self.y_train)
-                        len_champ_test, tree_champ, x_low_test = self.get_information_from_front([ind], self.x_test, self.y_test)
+                        len_champ, tree_champ, x_low_train = self.get_information_from_front([ind], self.x_train)
+                        len_champ_test, tree_champ, x_low_test = self.get_information_from_front([ind], self.x_test)
 
                         # evaluate the final objective functions
                         acc_train, acc_test = self.k_fold_valifation_accuracy_rf(x_low_train, x_low_test)
@@ -452,7 +458,7 @@ class pyNSGP:
 
         return front_non_duplicate
 
-    def get_information_from_front(self, front, x, y):
+    def get_information_from_front(self, front, x):
 
         low_dim, individuals, len_programs, fitness_list = self.gp_multi_tree_output(front, x)
 
@@ -463,41 +469,86 @@ class pyNSGP:
 
         return length, champion_representation, x_low
 
-    def k_fold_valifation_accuracy_rf(self, x_low_train, x_low_test):
+    def k_fold_valifation_accuracy_rf(self, x_low_test, n_splits=10):
+        accuracy_list = []
 
-        y_train = self.y_train
-        y_test = self.y_test
+        data_y = self.y_test
 
-        classifier = RandomForestClassifier()
-        classifier.fit(x_low_train, y_train)
-        predictions_train = classifier.predict(x_low_train)
-        predictions_test = classifier.predict(x_low_test)
+        kf = KFold(n_splits=n_splits, shuffle=True, random_state=0)
+        for train_indices, val_indices in kf.split(x_low_test):
+            x_train, y_train = x_low_test[train_indices], data_y[train_indices]
+            x_val, y_val = x_low_test[val_indices], data_y[val_indices]
 
-        accuracy_train = balanced_accuracy_score(y_train, predictions_train)
-        accuracy_test = balanced_accuracy_score(y_test, predictions_test)
+            scaler = StandardScaler()
+            scaler = scaler.fit(x_train)
+            x_train = scaler.transform(x_train)
+            x_val = scaler.transform(x_val)
 
-        return accuracy_train, accuracy_test
+            classifier = RandomForestClassifier()
+            classifier.fit(x_train, y_train)
+            predictions = classifier.predict(x_val)
 
-    def reconstruction_multi_output(self,  x_low_train, x_low_test):
+            accuracy = balanced_accuracy_score(y_val, predictions)
+            accuracy_list.append(accuracy)
 
-        scaler = StandardScaler()
-        scaler.fit(x_low_train)
-        x_low_train = scaler.transform(x_low_train)
-        x_low_test = scaler.transform(x_low_test)
+        return np.mean(accuracy_list)
 
-        x_train = self.train_data_x_pca
+    # def k_fold_valifation_accuracy_rf(self, x_low_train, x_low_test):
+    #
+    #     y_test = self.y_test
+    #     y_train = self.y_train
+    #
+    #     classifier = RandomForestClassifier()
+    #     classifier.fit(x_low_train, y_train)
+    #     predictions_train = classifier.predict(x_low_train)
+    #     predictions_test = classifier.predict(x_low_test)
+    #
+    #     accuracy_train = balanced_accuracy_score(y_train, predictions_train)
+    #     accuracy_test = balanced_accuracy_score(y_test, predictions_test)
+    #
+    #     return accuracy_train, accuracy_test
+
+    def reconstruction_multi_output(self, x_low_test, n_splits=10):
+
         x_test = self.test_data_x_pca
 
-        model = KernelRidge(kernel='rbf')
-        est = MultiOutputRegressor(model)
-        est.fit(x_low_train, x_train)
-        preds_train = est.predict(x_low_train)
-        preds_test = est.predict(x_low_test)
+        reconstruction_list = []
+        kf = KFold(n_splits=n_splits, shuffle=True, random_state=0)
+        for train_indices, val_indices in kf.split(x_low_test):
+            x_train, y_train = x_low_test[train_indices], x_test[train_indices]
+            x_val, y_val = x_low_test[val_indices], x_test[val_indices]
 
-        train_reconstruction_error = np.mean((preds_train - x_train) ** 2)
-        test_reconstruction_error = np.mean((preds_test - x_test) ** 2)
+            scaler = StandardScaler()
+            scaler = scaler.fit(x_train)
+            x_train = scaler.transform(x_train)
+            x_val = scaler.transform(x_val)
 
-        return train_reconstruction_error, test_reconstruction_error
+            model = KernelRidge(kernel='rbf')
+            est = MultiOutputRegressor(model)
+            est.fit(x_train, y_train)
+            preds_test = est.predict(x_val)
+
+            test_reconstruction_error = np.mean((preds_test - x_val) ** 2)
+
+            reconstruction_list.append(test_reconstruction_error)
+
+        return np.mean(reconstruction_list)
+
+    # def reconstruction_multi_output(self, x_low_train, x_low_test):
+    #
+    #     x_train = self.train_data_x_pca
+    #     x_test = self.test_data_x_pca
+    #
+    #     model = KernelRidge(kernel='rbf')
+    #     est = MultiOutputRegressor(model)
+    #     est.fit(x_low_train, x_train)
+    #     preds_train = est.predict(x_low_train)
+    #     preds_test = est.predict(x_low_test)
+    #
+    #     train_reconstruction_error = np.mean((preds_train - x_train) ** 2)
+    #     test_reconstruction_error = np.mean((preds_test - x_test) ** 2)
+    #
+    #     return train_reconstruction_error, test_reconstruction_error
 
     def neural_decoder_fitness(self, x_low_train, x_low_test):
 
