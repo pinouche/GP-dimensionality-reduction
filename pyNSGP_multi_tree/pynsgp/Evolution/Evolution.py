@@ -121,9 +121,9 @@ class pyNSGP:
 
         self.start_time = time.time()
 
-        # range(2): the first list is for training set and the second list is for test set
+        # range(2): the first is for the GP fitness and the second for the metrics on the test set
         if self.use_multi_tree:
-            list_info = [[] for _ in range(3)]
+            list_info = [[] for _ in range(2)]
         else:
             list_info = []
 
@@ -300,20 +300,17 @@ class pyNSGP:
                         len_champ_test, tree_champ, x_low_test = self.get_information_from_front([ind], self.x_test)
 
                         # evaluate the final objective functions
-                        acc_train, acc_test = self.k_fold_valifation_accuracy_rf(x_low_train, x_low_test)
-                        reconstruction_train_loss, reconstruction_test_loss = self.reconstruction_multi_output(x_low_train, x_low_test)
+                        acc_test = self.k_fold_valifation_accuracy_rf(x_low_test)
+                        reconstruction_test_loss = self.reconstruction_multi_output(x_low_test)
                         neural_decoder_train_loss, neural_decoder_test_loss = self.neural_decoder_fitness(x_low_train, x_low_test)
 
-                        stress_loss_train, rank_loss_train = self.stress_cost(x_low_train, self.train_data_x_pca)
                         stress_loss_test, rank_loss_test = self.stress_cost(x_low_test, self.test_data_x_pca)
 
                         if tree_champ.num_sub_functions > 0:
                             tree_champ = tree_champ.sub_functions
 
-                        list_info[1].append((acc_train, reconstruction_train_loss,
-                                             neural_decoder_train_loss, stress_loss_train, rank_loss_train, tree_champ))
-                        list_info[2].append((acc_test, reconstruction_test_loss,
-                                             neural_decoder_test_loss, stress_loss_test, rank_loss_test, tree_champ))
+                        list_info[1].append((acc_test, reconstruction_test_loss, neural_decoder_test_loss, stress_loss_test, rank_loss_test,
+                                             tree_champ))
 
                         front_information.append(list_info)
 
@@ -528,7 +525,7 @@ class pyNSGP:
             est.fit(x_train, y_train)
             preds_test = est.predict(x_val)
 
-            test_reconstruction_error = np.mean((preds_test - x_val) ** 2)
+            test_reconstruction_error = np.mean((preds_test - y_val) ** 2)
 
             reconstruction_list.append(test_reconstruction_error)
 
