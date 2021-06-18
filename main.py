@@ -8,7 +8,6 @@ from autoencoder import get_hidden_layers
 from util import train_base_model
 from util import k_fold_valifation_accuracy_rf
 from gp_surrogate import multi_tree_gp_surrogate_model
-#from gp_surrogate import gp_surrogate_model
 from load_data import load_data
 from load_data import shuffle_data
 
@@ -16,7 +15,7 @@ from sklearn.decomposition import PCA
 
 
 def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators_rate, share_multi_tree=False, second_objective="length",
-                     fitness="autoencoder_teacher_fitness", pop_size=100, multi_objective=False, one_mutation_on_average=False):
+                     fitness="autoencoder_teacher_fitness", pop_size=100, multi_objective=False):
     print("COMPUTING FOR RUN NUMBER: " + str(seed))
 
     dic_one_run = {}
@@ -44,6 +43,8 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators
     train_data_x_pca = est.transform(train_data_x)[:, :num_components]
     test_data_x_pca = est.transform(test_data_x)[:, :num_components]
 
+    print(train_data_x_pca.shape)
+
     # get the low dimensional representation of the data
     model = train_base_model(train_data_x, train_data_x_pca, seed, num_latent_dimensions)
 
@@ -65,11 +66,7 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators
                                                               share_multi_tree, second_objective, fitness,
                                                               pop_size, multi_objective)
     else:
-        # here, front_last_generation is None
-        front_last_generation = gp_surrogate_model(train_data_x, low_dim_train_x, train_data_y, test_data_x, low_dim_test_x, test_data_y,
-                                                   operators_rate,
-                                                   second_objective, int(pop_size / num_latent_dimensions),
-                                                   multi_objective)
+        pass
 
     dic_one_run["original_data_accuracy"] = accuracy_test_org
     dic_one_run["teacher_data"] = (accuracy_test_teacher, avg_reconstruction)
@@ -90,20 +87,17 @@ if __name__ == "__main__":
     num_of_runs = 1
     pop_size = 200
 
-    fitness_list = ["manifold_fitness_absolute", "manifold_fitness_rank_spearman", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
-    # fitness_list = ["manifold_fitness_rank_spearman"]
+    fitness_list = ["manifold_fitness_sammon_euclidean", "manifold_fitness_rank_euclidean", "manifold_fitness_sammon_isomap",
+                    "manifold_fitness_rank_isomap", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
 
-    for dataset in ["wine"]:
+    # fitness_list = ["autoencoder_teacher_fitness"]
+
+    for dataset in ["credit"]:
         for second_objective in ["length"]:
             for fitness in fitness_list:
 
-                # specify the allowed combination of methods
-                if fitness not in ["gp_autoencoder_fitness", "autoencoder_teacher_fitness"]:
-                    list_gp_method = [False]  # we only want multi-tree non-shared
-                elif fitness == "gp_autoencoder_fitness":
+                if fitness == "gp_autoencoder_fitness":
                     list_gp_method = [True]  # for gp-autoencoder fitness, we want to use the shared multi-tree GP representation
-                elif fitness == "autoencoder_teacher_fitness":  # we only want vanilla GP when using teacher model
-                    list_gp_method = [False]
                 else:
                     list_gp_method = [False]
 
@@ -112,9 +106,6 @@ if __name__ == "__main__":
                     for gp_method in list_gp_method:  # True: shared, multi-tree; False: non-shared, multi-tree; None: vanilla GP
                         print("THE GP METHOD IS")
                         print("fitness: ", fitness, "GP representation: ", gp_method)
-
-                        if gp_method is None and ("manifold_fitness" in fitness or fitness == "neural_decoder_fitness"):
-                            raise ValueError("the GP representation is not multi-tree and the fitness function is manifold function!")
 
                         for num_latent_dimensions in [2]:
 

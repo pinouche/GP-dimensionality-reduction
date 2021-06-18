@@ -10,6 +10,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.model_selection import KFold
+from sklearn import manifold
 
 from scipy.spatial.distance import pdist, squareform
 from scipy.stats import kendalltau
@@ -591,24 +592,35 @@ class pyNSGP:
 
     def stress_cost(self, x_low, x_original_pca):
 
-        # compute distances on the original data
-        x_dist = pdist(x_original_pca, 'euclidean')
-        x_low_dist = pdist(x_low, 'euclidean')
+        if "euclidean" in self.fitness_function.fitness:
+            # compute distances on the original data (pca)
+            x_dist = pdist(x_original_pca, 'euclidean')
+            # compute distances on the gp predictions (lower dimensional data)
+            x_low_dist = pdist(x_low, 'euclidean')
+        else:
+            est = manifold.Isomap(n_neighbors=6)
+            est.fit(x_original_pca)
+            x_dist = est.dist_matrix_
+
+            est = manifold.Isomap(n_neighbors=6)
+            est.fit(x_low)
+            x_low_dist = est.dist_matrix_
 
         # stress cost
-        fitness_absolute = np.sum(np.abs(x_dist - x_low_dist))
+        fitness_sammon = np.mean(((x_dist - x_low_dist) ** 2) / (x_dist + 1e-4))
 
         # spearman cost
-        full_x_dist = squareform(x_dist)
-        full_x_low_dist = squareform(x_low_dist)
+        if "euclidean" in self.fitness_function.fitness:
+            x_dist = squareform(x_dist)
+            x_low_dist = squareform(x_low_dist)
 
-        fitness_spearman = 0
-        for index in range(full_x_dist.shape[0]):
-            corr = kendalltau(full_x_dist[index], full_x_low_dist[index])[0]*-1
+        fitness_rank = 0
+        for index in range(x_dist.shape[0]):
+            corr = kendalltau(x_dist[index], x_low_dist[index])[0]*-1
             if np.isnan(corr):
                 corr = 1
-            fitness_spearman += corr
+            fitness_rank += corr
 
-        fitness_spearman /= full_x_dist.shape[0]
+        fitness_rank /= x_dist.shape[0]
 
-        return fitness_absolute, fitness_spearman
+        return fitness_sammon, fitness_rank

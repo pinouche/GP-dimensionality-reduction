@@ -3,6 +3,7 @@ from copy import deepcopy
 import random
 from scipy.spatial.distance import pdist, squareform
 from scipy.stats import kendalltau
+from sklearn import manifold
 
 from pynsgp.Nodes.SymbolicRegressionNodes import FeatureNode
 from pynsgp.Nodes.MultiTreeRepresentation import MultiTreeIndividual
@@ -100,25 +101,35 @@ class SymbolicRegressionFitness:
         random.seed(self.evaluations)
         indices_vector = random.sample(range(data.shape[0]), batch_size)
 
-        # compute distances on the original data (pca)
-        similarity_matrix_batch = pdist(data_pca[indices_vector], 'euclidean')
-
         prediction_batch = data[indices_vector]
         output = individual.GetOutput(prediction_batch)
-        # compute distances on the gp predictions (lower dimensional data)
-        similarity_matrix_pred = pdist(output, 'euclidean')
 
-        if self.fitness == "manifold_fitness_absolute":
-            fitness = np.sum(np.abs(similarity_matrix_batch - similarity_matrix_pred))
+        if "euclidean" in self.fitness:
+            # compute distances on the original data (pca)
+            similarity_matrix_batch = pdist(data_pca[indices_vector], 'euclidean')
+            # compute distances on the gp predictions (lower dimensional data)
+            similarity_matrix_pred = pdist(output, 'euclidean')
 
-        elif self.fitness == "manifold_fitness_rank_spearman":
+            similarity_matrix_batch = squareform(similarity_matrix_batch)
+            similarity_matrix_pred = squareform(similarity_matrix_pred)
 
-            full_similirarity_matrix_org = squareform(similarity_matrix_batch)
-            full_similirarity_matrix_pred = squareform(similarity_matrix_pred)
+        else:
+            est = manifold.Isomap(n_neighbors=6)
+            est.fit(data_pca[indices_vector])
+            similarity_matrix_batch = est.dist_matrix_
+
+            est = manifold.Isomap(n_neighbors=6)
+            est.fit(output)
+            similarity_matrix_pred = est.dist_matrix_
+
+        if "sammon" in self.fitness:
+            fitness = np.mean(((similarity_matrix_batch - similarity_matrix_pred)**2)/(similarity_matrix_batch + 1e-4))
+
+        elif "rank" in self.fitness:
 
             fitness = 0
             for index in range(batch_size):
-                corr = kendalltau(full_similirarity_matrix_org[index], full_similirarity_matrix_pred[index])[0]*-1
+                corr = kendalltau(similarity_matrix_batch[index], similarity_matrix_pred[index])[0]*-1
                 if np.isnan(corr):
                     corr = 1
                 fitness += corr
