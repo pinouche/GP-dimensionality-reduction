@@ -183,7 +183,7 @@ class pyNSGP:
 
                 # variation of multi trees
                 if isinstance(o, MultiTreeIndividual):
-                    
+
                     while not variation_event_happened:
 
                         for i in range(o.num_sub_functions):
@@ -305,13 +305,16 @@ class pyNSGP:
                         reconstruction_test_loss = self.reconstruction_multi_output(x_low_test)
                         neural_decoder_train_loss, neural_decoder_test_loss = self.neural_decoder_fitness(x_low_train, x_low_test)
 
-                        stress_loss_test, rank_loss_test = self.stress_cost(x_low_test, self.test_data_x_pca)
+                        sammon_euclid_test, rank_euclid_test, sammon_iso_test, rank_iso_test = self.stress_cost(x_low_test, self.test_data_x_pca)
 
                         if tree_champ.num_sub_functions > 0:
                             tree_champ = tree_champ.sub_functions
 
-                        list_info[1].append((acc_test, reconstruction_test_loss, neural_decoder_test_loss, stress_loss_test, rank_loss_test,
-                                             tree_champ))
+                        list_info[1].append((acc_test, reconstruction_test_loss, neural_decoder_test_loss, sammon_euclid_test, rank_euclid_test,
+                                             sammon_iso_test, rank_iso_test, tree_champ))
+
+                        print("METRICS:", acc_test, reconstruction_test_loss, neural_decoder_test_loss, sammon_euclid_test, rank_euclid_test,
+                              sammon_iso_test, rank_iso_test)
 
                         front_information.append(list_info)
 
@@ -592,35 +595,34 @@ class pyNSGP:
 
     def stress_cost(self, x_low, x_original_pca):
 
-        if "euclidean" in self.fitness_function.fitness:
-            # compute distances on the original data (pca)
-            x_dist = pdist(x_original_pca, 'euclidean')
-            # compute distances on the gp predictions (lower dimensional data)
-            x_low_dist = pdist(x_low, 'euclidean')
-        else:
-            est = manifold.Isomap(n_neighbors=6)
-            est.fit(x_original_pca)
-            x_dist = est.dist_matrix_
+        x_dist_euclidean = squareform(pdist(x_original_pca, 'euclidean'))
+        x_low_dist_euclidean = squareform(pdist(x_low, 'euclidean'))
 
-            est = manifold.Isomap(n_neighbors=6)
-            est.fit(x_low)
-            x_low_dist = est.dist_matrix_
+        est = manifold.Isomap(n_neighbors=20)
+        est.fit(x_original_pca)
+        x_dist_isomap = est.dist_matrix_
 
-        # stress cost
-        fitness_sammon = np.mean(((x_dist - x_low_dist) ** 2) / (x_dist + 1e-4))
+        est = manifold.Isomap(n_neighbors=20)
+        est.fit(x_low)
+        x_low_dist_isomap = est.dist_matrix_
 
-        # spearman cost
-        if "euclidean" in self.fitness_function.fitness:
-            x_dist = squareform(x_dist)
-            x_low_dist = squareform(x_low_dist)
+        def compute_sammon_and_rank(x_dist, x_low_dist):
 
-        fitness_rank = 0
-        for index in range(x_dist.shape[0]):
-            corr = kendalltau(x_dist[index], x_low_dist[index])[0]*-1
-            if np.isnan(corr):
-                corr = 1
-            fitness_rank += corr
+            # sammon cost
+            fitness_sammon = np.mean(((x_dist - x_low_dist) ** 2) / (x_dist + 1e-4))
 
-        fitness_rank /= x_dist.shape[0]
+            # spearman cost
+            fitness_rank = 0
+            for index in range(x_dist.shape[0]):
+                corr = kendalltau(x_dist[index], x_low_dist[index])[0] * -1
+                if np.isnan(corr):
+                    corr = 1
+                fitness_rank += corr
+            fitness_rank /= x_dist.shape[0]
 
-        return fitness_sammon, fitness_rank
+            return fitness_sammon, fitness_rank
+
+        fitness_sammon_euclidean, fitness_rank_euclidean = compute_sammon_and_rank(x_dist_euclidean, x_low_dist_euclidean)
+        fitness_sammon_isomap, fitness_rank_isomap = compute_sammon_and_rank(x_dist_isomap, x_low_dist_isomap)
+
+        return fitness_sammon_euclidean, fitness_rank_euclidean, fitness_sammon_isomap, fitness_rank_isomap

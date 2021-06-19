@@ -114,11 +114,11 @@ class SymbolicRegressionFitness:
             similarity_matrix_pred = squareform(similarity_matrix_pred)
 
         else:
-            est = manifold.Isomap(n_neighbors=6)
+            est = manifold.Isomap(n_neighbors=20)
             est.fit(data_pca[indices_vector])
             similarity_matrix_batch = est.dist_matrix_
 
-            est = manifold.Isomap(n_neighbors=6)
+            est = manifold.Isomap(n_neighbors=20)
             est.fit(output)
             similarity_matrix_pred = est.dist_matrix_
 

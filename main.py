@@ -38,7 +38,7 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators
     # PCA tansformation of the original data
     est = PCA(n_components=train_data_x.shape[1])
     est.fit(train_data_x)
-    explained_variance_mask = np.cumsum(est.explained_variance_ratio_) >= 0.95
+    explained_variance_mask = np.cumsum(est.explained_variance_ratio_) >= 1.0
     num_components = list(explained_variance_mask).index(True)
     train_data_x_pca = est.transform(train_data_x)[:, :num_components]
     test_data_x_pca = est.transform(test_data_x)[:, :num_components]
@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
     # fitness_list = ["autoencoder_teacher_fitness"]
 
-    for dataset in ["credit"]:
+    for dataset in ["segmentation"]:
         for second_objective in ["length"]:
             for fitness in fitness_list:
 

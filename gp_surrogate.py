@@ -27,7 +27,7 @@ def multi_tree_gp_surrogate_model(train_data_x, low_dim_x, train_data_y, test_da
         use_linear_scaling = False
 
     estimator = NSGP(train_data_x, train_data_y, test_data_x, test_data_y, train_data_x_pca, test_data_x_pca,
-                     pop_size=pop_size, max_generations=2, verbose=True, max_tree_size=50,
+                     pop_size=pop_size, max_generations=10, verbose=True, max_tree_size=50,
                      crossover_rate=operators_rate[0], mutation_rate=operators_rate[1], op_mutation_rate=operators_rate[2], min_depth=1,
                      initialization_max_tree_height=init_max_tree_height, tournament_size=2, use_linear_scaling=use_linear_scaling,
                      use_erc=True, second_objective=second_objective,
