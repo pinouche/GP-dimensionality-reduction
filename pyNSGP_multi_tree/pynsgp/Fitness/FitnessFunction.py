@@ -25,15 +25,18 @@ class SymbolicRegressionFitness:
         self.fitness = fitness
         self.elite = None
         self.evaluations = 0
+        self.indices_array = 0
+        self.data_batch = 0
+        self.similarity_matrix_batch = 0
 
-    def Evaluate(self, individual):
+    def Evaluate(self, individual, generations):
 
         self.evaluations = self.evaluations + 1
         individual.objectives = []
 
         if "manifold_fitness" in self.fitness:
-            obj1_train = self.stress_cost(self.X_train, self.train_data_x_pca, individual, 64)
-            obj1_test = self.stress_cost(self.X_test, self.test_data_x_pca, individual, 64)
+            obj1_train = self.stress_cost(self.X_train, self.train_data_x_pca, individual, generations, 64)
+            obj1_test = self.stress_cost(self.X_test, self.test_data_x_pca, individual, generations, 64)
         elif self.fitness == "autoencoder_teacher_fitness" or self.fitness == "gp_autoencoder_fitness":
             obj1_train = self.EvaluateMeanSquaredError(self.X_train, self.y_train, individual, True)
             obj1_test = self.EvaluateMeanSquaredError(self.X_test, self.y_test, individual, False)
@@ -94,42 +97,46 @@ class SymbolicRegressionFitness:
         return fit_error
 
     # fitness function to directly evolve trees to do dimensionality reduction
-    def stress_cost(self, data, data_pca, individual, batch_size=64):
+    def stress_cost(self, data, data_pca, individual, generations, batch_size=64):
 
         assert batch_size <= self.X_train.shape[0]
 
-        random.seed(self.evaluations)
-        indices_vector = random.sample(range(data.shape[0]), batch_size)
+        if self.evaluations == 1:
+            random.seed(generations)
+            self.indices_array = random.sample(range(data.shape[0]), batch_size)
+            self.data_batch = data_pca[self.indices_array]
 
-        prediction_batch = data[indices_vector]
+        prediction_batch = data[self.indices_array]
         output = individual.GetOutput(prediction_batch)
 
         if "euclidean" in self.fitness:
             # compute distances on the original data (pca)
-            similarity_matrix_batch = pdist(data_pca[indices_vector], 'euclidean')
+            if self.evaluations == 1:
+                self.similarity_matrix_batch = pdist(self.data_batch, 'euclidean')
+                self.similarity_matrix_batch = squareform(self.similarity_matrix_batch)
+
             # compute distances on the gp predictions (lower dimensional data)
             similarity_matrix_pred = pdist(output, 'euclidean')
-
-            similarity_matrix_batch = squareform(similarity_matrix_batch)
             similarity_matrix_pred = squareform(similarity_matrix_pred)
 
         else:
-            est = manifold.Isomap(n_neighbors=20)
-            est.fit(data_pca[indices_vector])
-            similarity_matrix_batch = est.dist_matrix_
+            if self.evaluations == 1:
+                est = manifold.Isomap(n_neighbors=20)
+                est.fit(self.data_batch)
+                self.similarity_matrix_batch = est.dist_matrix_
 
             est = manifold.Isomap(n_neighbors=20)
             est.fit(output)
             similarity_matrix_pred = est.dist_matrix_
 
         if "sammon" in self.fitness:
-            fitness = np.mean(((similarity_matrix_batch - similarity_matrix_pred)**2)/(similarity_matrix_batch + 1e-4))
+            fitness = np.mean(((self.similarity_matrix_batch - similarity_matrix_pred)**2)/(self.similarity_matrix_batch + 1e-4))
 
         elif "rank" in self.fitness:
 
             fitness = 0
             for index in range(batch_size):
-                corr = kendalltau(similarity_matrix_batch[index], similarity_matrix_pred[index])[0]*-1
+                corr = kendalltau(self.similarity_matrix_batch[index], similarity_matrix_pred[index])[0]*-1
                 if np.isnan(corr):
                     corr = 1
                 fitness += corr

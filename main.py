@@ -38,8 +38,14 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators
     # PCA tansformation of the original data
     est = PCA(n_components=train_data_x.shape[1])
     est.fit(train_data_x)
-    explained_variance_mask = np.cumsum(est.explained_variance_ratio_) >= 1.0
-    num_components = list(explained_variance_mask).index(True)
+    explained_variance = 0.98
+
+    if explained_variance != 1.0:
+        explained_variance_mask = np.cumsum(est.explained_variance_ratio_) >= explained_variance
+        num_components = list(explained_variance_mask).index(True)
+    else:
+        num_components = train_data_x.shape[1]
+
     train_data_x_pca = est.transform(train_data_x)[:, :num_components]
     test_data_x_pca = est.transform(test_data_x)[:, :num_components]
 

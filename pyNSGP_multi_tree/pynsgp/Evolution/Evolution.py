@@ -105,16 +105,13 @@ class pyNSGP:
     def __ShouldTerminate(self):
         must_terminate = False
         elapsed_time = time.time() - self.start_time
-        if 0 < self.max_evaluations <= self.fitness_function.evaluations:
-            must_terminate = True
-        elif 0 < self.max_generations <= self.generations:
+        if 0 < self.max_generations <= self.generations:
             must_terminate = True
         elif 0 < self.max_time <= elapsed_time:
             must_terminate = True
 
         if must_terminate and self.verbose:
-            print('Terminating at\n\t',
-                  self.generations, 'generations\n\t', self.fitness_function.evaluations, 'evaluations\n\t', np.round(elapsed_time, 2), 'seconds')
+            print('Terminating at\n\t', self.generations, 'generations\n\t', np.round(elapsed_time, 2), 'seconds')
 
         return must_terminate
 
@@ -165,12 +162,15 @@ class pyNSGP:
                 f = Variation.GenerateRandomTree(self.functions, self.terminals, curr_max_depth, curr_height=0, method='full',
                                                  min_depth=self.min_depth)
 
-            self.fitness_function.Evaluate(g)
+            self.fitness_function.Evaluate(g, self.generations)
             self.population.append(g)
-            self.fitness_function.Evaluate(f)
+            self.fitness_function.Evaluate(f, self.generations)
             self.population.append(f)
 
         while not self.__ShouldTerminate():
+
+            # reset the number of evaluations at each generation
+            self.fitness_function.evaluations = 0
 
             selected = Selection.tournament(self.population, self.pop_size, self.multi_objective, tournament_size=self.tournament_size)
 
@@ -223,7 +223,7 @@ class pyNSGP:
                             if self.fitness_function.EvaluateLength(o) > self.max_tree_size:
                                 o.sup_functions[i] = deepcopy(selected[i].sup_functions[i])
 
-                    self.fitness_function.Evaluate(o)
+                    self.fitness_function.Evaluate(o, self.generations+1)
 
                 # variation of normal individuals
                 else:
@@ -241,7 +241,7 @@ class pyNSGP:
                     if len(o.GetSubtree()) > self.max_tree_size:
                         o = deepcopy(selected[i])
                     else:
-                        self.fitness_function.Evaluate(o)
+                        self.fitness_function.Evaluate(o, self.generations+1)
 
                 O.append(o)
 
