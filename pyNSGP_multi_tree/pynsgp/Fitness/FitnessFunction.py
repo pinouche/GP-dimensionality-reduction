@@ -113,21 +113,29 @@ class SymbolicRegressionFitness:
             # compute distances on the original data (pca)
             if self.evaluations == 1:
                 self.similarity_matrix_batch = pdist(self.data_batch, 'euclidean')
-                self.similarity_matrix_batch = squareform(self.similarity_matrix_batch)
 
             # compute distances on the gp predictions (lower dimensional data)
             similarity_matrix_pred = pdist(output, 'euclidean')
-            similarity_matrix_pred = squareform(similarity_matrix_pred)
+
+            if "rank" in self.fitness:
+                self.similarity_matrix_batch = squareform(self.similarity_matrix_batch)
+                similarity_matrix_pred = squareform(similarity_matrix_pred)
 
         else:
             if self.evaluations == 1:
-                est = manifold.Isomap(n_neighbors=20)
+                est = manifold.Isomap(n_neighbors=6)
                 est.fit(self.data_batch)
                 self.similarity_matrix_batch = est.dist_matrix_
 
-            est = manifold.Isomap(n_neighbors=20)
+                if "sammon" in self.fitness:
+                    self.similarity_matrix_batch = self.similarity_matrix_batch[np.triu_indices(batch_size, 1)]
+
+            est = manifold.Isomap(n_neighbors=6)
             est.fit(output)
             similarity_matrix_pred = est.dist_matrix_
+
+            if "sammon" in self.fitness:
+                similarity_matrix_pred = similarity_matrix_pred[np.triu_indices(batch_size, 1)]
 
         if "sammon" in self.fitness:
             fitness = np.mean(((self.similarity_matrix_batch - similarity_matrix_pred)**2)/(self.similarity_matrix_batch + 1e-4))

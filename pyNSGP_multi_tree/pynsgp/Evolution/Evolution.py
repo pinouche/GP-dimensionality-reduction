@@ -301,20 +301,18 @@ class pyNSGP:
                         len_champ_test, tree_champ, x_low_test = self.get_information_from_front([ind], self.x_test)
 
                         # evaluate the final objective functions
-                        acc_test = self.k_fold_valifation_accuracy_rf(x_low_test)
-                        reconstruction_test_loss = self.reconstruction_multi_output(x_low_test)
+                        acc_test = self.k_fold_valifation_accuracy_rf(x_low_train, x_low_test)
+                        reconstruction_test_loss = self.reconstruction_multi_output(x_low_train, x_low_test)
                         neural_decoder_train_loss, neural_decoder_test_loss = self.neural_decoder_fitness(x_low_train, x_low_test)
 
-                        sammon_euclid_test, rank_euclid_test, sammon_iso_test, rank_iso_test = self.stress_cost(x_low_test, self.test_data_x_pca)
+                        # sammon_euclid_test, rank_euclid_test, sammon_iso_test, rank_iso_test = self.stress_cost(x_low_test, self.test_data_x_pca)
 
                         if tree_champ.num_sub_functions > 0:
                             tree_champ = tree_champ.sub_functions
 
-                        list_info[1].append((acc_test, reconstruction_test_loss, neural_decoder_test_loss, sammon_euclid_test, rank_euclid_test,
-                                             sammon_iso_test, rank_iso_test, tree_champ))
+                        list_info[1].append((acc_test, reconstruction_test_loss, neural_decoder_test_loss, tree_champ))
 
-                        print("METRICS:", acc_test, reconstruction_test_loss, neural_decoder_test_loss, sammon_euclid_test, rank_euclid_test,
-                              sammon_iso_test, rank_iso_test)
+                        print("METRICS:", acc_test, reconstruction_test_loss, neural_decoder_test_loss)
 
                         front_information.append(list_info)
 
@@ -470,86 +468,32 @@ class pyNSGP:
 
         return length, champion_representation, x_low
 
-    def k_fold_valifation_accuracy_rf(self, x_low_test, n_splits=10):
-        accuracy_list = []
+    def k_fold_valifation_accuracy_rf(self, x_low_train, x_low_test):
 
-        data_y = self.y_test
+        y_test = self.y_test
+        y_train = self.y_train
 
-        kf = KFold(n_splits=n_splits, shuffle=True, random_state=0)
-        for train_indices, val_indices in kf.split(x_low_test):
-            x_train, y_train = x_low_test[train_indices], data_y[train_indices]
-            x_val, y_val = x_low_test[val_indices], data_y[val_indices]
+        classifier = RandomForestClassifier()
+        classifier.fit(x_low_train, y_train)
+        predictions_test = classifier.predict(x_low_test)
 
-            scaler = StandardScaler()
-            scaler = scaler.fit(x_train)
-            x_train = scaler.transform(x_train)
-            x_val = scaler.transform(x_val)
+        accuracy_test = balanced_accuracy_score(y_test, predictions_test)
 
-            classifier = RandomForestClassifier()
-            classifier.fit(x_train, y_train)
-            predictions = classifier.predict(x_val)
+        return accuracy_test
 
-            accuracy = balanced_accuracy_score(y_val, predictions)
-            accuracy_list.append(accuracy)
+    def reconstruction_multi_output(self, x_low_train, x_low_test):
 
-        return np.mean(accuracy_list)
-
-    # def k_fold_valifation_accuracy_rf(self, x_low_train, x_low_test):
-    #
-    #     y_test = self.y_test
-    #     y_train = self.y_train
-    #
-    #     classifier = RandomForestClassifier()
-    #     classifier.fit(x_low_train, y_train)
-    #     predictions_train = classifier.predict(x_low_train)
-    #     predictions_test = classifier.predict(x_low_test)
-    #
-    #     accuracy_train = balanced_accuracy_score(y_train, predictions_train)
-    #     accuracy_test = balanced_accuracy_score(y_test, predictions_test)
-    #
-    #     return accuracy_train, accuracy_test
-
-    def reconstruction_multi_output(self, x_low_test, n_splits=10):
-
+        x_train = self.train_data_x_pca
         x_test = self.test_data_x_pca
 
-        reconstruction_list = []
-        kf = KFold(n_splits=n_splits, shuffle=True, random_state=0)
-        for train_indices, val_indices in kf.split(x_low_test):
-            x_train, y_train = x_low_test[train_indices], x_test[train_indices]
-            x_val, y_val = x_low_test[val_indices], x_test[val_indices]
+        model = KernelRidge(kernel='rbf')
+        est = MultiOutputRegressor(model)
+        est.fit(x_low_train, x_train)
+        preds_test = est.predict(x_low_test)
 
-            scaler = StandardScaler()
-            scaler = scaler.fit(x_train)
-            x_train = scaler.transform(x_train)
-            x_val = scaler.transform(x_val)
+        test_reconstruction_error = np.mean((preds_test - x_test) ** 2)
 
-            model = KernelRidge(kernel='rbf')
-            est = MultiOutputRegressor(model)
-            est.fit(x_train, y_train)
-            preds_test = est.predict(x_val)
-
-            test_reconstruction_error = np.mean((preds_test - y_val) ** 2)
-
-            reconstruction_list.append(test_reconstruction_error)
-
-        return np.mean(reconstruction_list)
-
-    # def reconstruction_multi_output(self, x_low_train, x_low_test):
-    #
-    #     x_train = self.train_data_x_pca
-    #     x_test = self.test_data_x_pca
-    #
-    #     model = KernelRidge(kernel='rbf')
-    #     est = MultiOutputRegressor(model)
-    #     est.fit(x_low_train, x_train)
-    #     preds_train = est.predict(x_low_train)
-    #     preds_test = est.predict(x_low_test)
-    #
-    #     train_reconstruction_error = np.mean((preds_train - x_train) ** 2)
-    #     test_reconstruction_error = np.mean((preds_test - x_test) ** 2)
-    #
-    #     return train_reconstruction_error, test_reconstruction_error
+        return test_reconstruction_error
 
     def neural_decoder_fitness(self, x_low_train, x_low_test):
 
@@ -593,36 +537,36 @@ class pyNSGP:
 
         return training_loss, test_loss
 
-    def stress_cost(self, x_low, x_original_pca):
-
-        x_dist_euclidean = squareform(pdist(x_original_pca, 'euclidean'))
-        x_low_dist_euclidean = squareform(pdist(x_low, 'euclidean'))
-
-        est = manifold.Isomap(n_neighbors=20)
-        est.fit(x_original_pca)
-        x_dist_isomap = est.dist_matrix_
-
-        est = manifold.Isomap(n_neighbors=20)
-        est.fit(x_low)
-        x_low_dist_isomap = est.dist_matrix_
-
-        def compute_sammon_and_rank(x_dist, x_low_dist):
-
-            # sammon cost
-            fitness_sammon = np.mean(((x_dist - x_low_dist) ** 2) / (x_dist + 1e-4))
-
-            # spearman cost
-            fitness_rank = 0
-            for index in range(x_dist.shape[0]):
-                corr = kendalltau(x_dist[index], x_low_dist[index])[0] * -1
-                if np.isnan(corr):
-                    corr = 1
-                fitness_rank += corr
-            fitness_rank /= x_dist.shape[0]
-
-            return fitness_sammon, fitness_rank
-
-        fitness_sammon_euclidean, fitness_rank_euclidean = compute_sammon_and_rank(x_dist_euclidean, x_low_dist_euclidean)
-        fitness_sammon_isomap, fitness_rank_isomap = compute_sammon_and_rank(x_dist_isomap, x_low_dist_isomap)
-
-        return fitness_sammon_euclidean, fitness_rank_euclidean, fitness_sammon_isomap, fitness_rank_isomap
+    # def stress_cost(self, x_low, x_original_pca):
+    #
+    #     x_dist_euclidean = squareform(pdist(x_original_pca, 'euclidean'))
+    #     x_low_dist_euclidean = squareform(pdist(x_low, 'euclidean'))
+    #
+    #     est = manifold.Isomap(n_neighbors=20)
+    #     est.fit(x_original_pca)
+    #     x_dist_isomap = est.dist_matrix_
+    #
+    #     est = manifold.Isomap(n_neighbors=20)
+    #     est.fit(x_low)
+    #     x_low_dist_isomap = est.dist_matrix_
+    #
+    #     def compute_sammon_and_rank(x_dist, x_low_dist):
+    #
+    #         # sammon cost
+    #         fitness_sammon = np.mean(((x_dist - x_low_dist) ** 2) / (x_dist + 1e-4))
+    #
+    #         # spearman cost
+    #         fitness_rank = 0
+    #         for index in range(x_dist.shape[0]):
+    #             corr = kendalltau(x_dist[index], x_low_dist[index])[0] * -1
+    #             if np.isnan(corr):
+    #                 corr = 1
+    #             fitness_rank += corr
+    #         fitness_rank /= x_dist.shape[0]
+    #
+    #         return fitness_sammon, fitness_rank
+    #
+    #     fitness_sammon_euclidean, fitness_rank_euclidean = compute_sammon_and_rank(x_dist_euclidean, x_low_dist_euclidean)
+    #     fitness_sammon_isomap, fitness_rank_isomap = compute_sammon_and_rank(x_dist_isomap, x_low_dist_isomap)
+    #
+    #     return fitness_sammon_euclidean, fitness_rank_euclidean, fitness_sammon_isomap, fitness_rank_isomap

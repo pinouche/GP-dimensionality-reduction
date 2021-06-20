@@ -40,6 +40,8 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators
     est.fit(train_data_x)
     explained_variance = 0.98
 
+    # 0.98 was the best for rank isomap
+
     if explained_variance != 1.0:
         explained_variance_mask = np.cumsum(est.explained_variance_ratio_) >= explained_variance
         num_components = list(explained_variance_mask).index(True)
@@ -91,14 +93,14 @@ if __name__ == "__main__":
     operators_rate = (crossover_rate, op_mutation_rate, mutation_rate)
 
     num_of_runs = 1
-    pop_size = 200
+    pop_size = 100
 
-    fitness_list = ["manifold_fitness_sammon_euclidean", "manifold_fitness_rank_euclidean", "manifold_fitness_sammon_isomap",
-                    "manifold_fitness_rank_isomap", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
+    # fitness_list = ["manifold_fitness_sammon_euclidean", "manifold_fitness_rank_euclidean", "manifold_fitness_sammon_isomap",
+    # "manifold_fitness_rank_isomap", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
 
-    # fitness_list = ["autoencoder_teacher_fitness"]
+    fitness_list = ["manifold_fitness_rank_isomap"]
 
-    for dataset in ["segmentation"]:
+    for dataset in ["credit"]:
         for second_objective in ["length"]:
             for fitness in fitness_list:
 
