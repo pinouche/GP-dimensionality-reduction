@@ -93,14 +93,15 @@ if __name__ == "__main__":
     operators_rate = (crossover_rate, op_mutation_rate, mutation_rate)
 
     num_of_runs = 1
-    pop_size = 100
+    pop_size = 200
 
     # fitness_list = ["manifold_fitness_sammon_euclidean", "manifold_fitness_rank_euclidean", "manifold_fitness_sammon_isomap",
     # "manifold_fitness_rank_isomap", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
 
-    fitness_list = ["manifold_fitness_rank_isomap"]
+    fitness_list = ["manifold_fitness_rank_euclidean", "manifold_fitness_sammon_isomap",
+                    "manifold_fitness_rank_isomap"]
 
-    for dataset in ["credit"]:
+    for dataset in ["wine"]:
         for second_objective in ["length"]:
             for fitness in fitness_list:
 

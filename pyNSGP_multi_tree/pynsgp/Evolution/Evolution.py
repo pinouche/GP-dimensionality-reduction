@@ -9,11 +9,7 @@ from sklearn.metrics import balanced_accuracy_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.multioutput import MultiOutputRegressor
-from sklearn.model_selection import KFold
-from sklearn import manifold
 
-from scipy.spatial.distance import pdist, squareform
-from scipy.stats import kendalltau
 
 from pynsgp.Variation import Variation
 from pynsgp.Selection import Selection

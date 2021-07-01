@@ -103,7 +103,7 @@ class SymbolicRegressionFitness:
 
         if self.evaluations == 1:
             random.seed(generations)
-            self.indices_array = random.sample(range(data.shape[0]), batch_size)
+            self.indices_array = random.sample(range(data.shape[0]-1), batch_size)
             self.data_batch = data_pca[self.indices_array]
 
         prediction_batch = data[self.indices_array]
@@ -118,7 +118,8 @@ class SymbolicRegressionFitness:
             similarity_matrix_pred = pdist(output, 'euclidean')
 
             if "rank" in self.fitness:
-                self.similarity_matrix_batch = squareform(self.similarity_matrix_batch)
+                if self.evaluations == 1:
+                    self.similarity_matrix_batch = squareform(self.similarity_matrix_batch)
                 similarity_matrix_pred = squareform(similarity_matrix_pred)
 
         else:
