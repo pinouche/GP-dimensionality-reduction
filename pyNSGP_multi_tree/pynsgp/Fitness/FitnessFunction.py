@@ -145,7 +145,7 @@ class SymbolicRegressionFitness:
 
             fitness = 0
             for index in range(batch_size):
-                corr = weightedtau(self.similarity_matrix_batch[index], similarity_matrix_pred[index])[0]*-1
+                corr = weightedtau(np.argsort(self.similarity_matrix_batch[index]), np.argsort(similarity_matrix_pred[index]))[0]*-1
                 if np.isnan(corr):
                     corr = 1
                 fitness += corr

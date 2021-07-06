@@ -38,7 +38,7 @@ def low_dim_accuracy(dataset, seed, data_struc, num_latent_dimensions, operators
     # PCA tansformation of the original data
     est = PCA(n_components=train_data_x.shape[1])
     est.fit(train_data_x)
-    explained_variance = 0.95
+    explained_variance = 0.99
 
     # 0.98 was the best for rank isomap
 
