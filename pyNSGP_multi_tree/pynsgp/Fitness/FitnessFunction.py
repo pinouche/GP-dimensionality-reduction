@@ -2,7 +2,7 @@ import numpy as np
 from copy import deepcopy
 import random
 from scipy.spatial.distance import pdist, squareform
-from scipy.stats import kendalltau
+from scipy.stats import kendalltau, weightedtau
 from sklearn import manifold
 
 from pynsgp.Nodes.SymbolicRegressionNodes import FeatureNode
@@ -145,7 +145,7 @@ class SymbolicRegressionFitness:
 
             fitness = 0
             for index in range(batch_size):
-                corr = kendalltau(self.similarity_matrix_batch[index], similarity_matrix_pred[index])[0]*-1
+                corr = weightedtau(self.similarity_matrix_batch[index], similarity_matrix_pred[index])[0]*-1
                 if np.isnan(corr):
                     corr = 1
                 fitness += corr
