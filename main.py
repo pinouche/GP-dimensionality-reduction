@@ -87,8 +87,8 @@ if __name__ == "__main__":
 
     multi_objective = False
 
-    crossover_rate = 0.9
-    op_mutation_rate = 0.1
+    crossover_rate = 0.8
+    op_mutation_rate = 0.2
     mutation_rate = op_mutation_rate
     operators_rate = (crossover_rate, op_mutation_rate, mutation_rate)
 
@@ -98,10 +98,9 @@ if __name__ == "__main__":
     # fitness_list = ["manifold_fitness_sammon_euclidean", "manifold_fitness_rank_euclidean", "manifold_fitness_sammon_isomap",
     # "manifold_fitness_rank_isomap", "autoencoder_teacher_fitness", "gp_autoencoder_fitness"]
 
-    fitness_list = ["manifold_fitness_rank_euclidean", "manifold_fitness_sammon_isomap",
-                    "manifold_fitness_rank_isomap"]
+    fitness_list = ["manifold_fitness_sammon_isomap"]
 
-    for dataset in ["wine"]:
+    for dataset in ["segmentation"]:
         for second_objective in ["length"]:
             for fitness in fitness_list:
 

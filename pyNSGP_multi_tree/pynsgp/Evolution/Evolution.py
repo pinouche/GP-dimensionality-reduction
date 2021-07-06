@@ -3,6 +3,8 @@ from numpy.random import random, randint
 import time
 from copy import deepcopy
 import keras
+import sys
+sys.setrecursionlimit(10 ** 4)
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import balanced_accuracy_score
@@ -239,7 +241,10 @@ class pyNSGP:
                     else:
                         self.fitness_function.Evaluate(o, self.generations+1)
 
-                O.append(o)
+                if o.objectives[0][0] < selected[i].objectives[0][0]:
+                    O.append(o)
+                else:
+                    O.append(selected[i])
 
             if self.multi_objective:
                 PO = self.population + O

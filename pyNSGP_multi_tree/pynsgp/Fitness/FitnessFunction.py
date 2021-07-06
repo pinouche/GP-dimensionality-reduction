@@ -124,14 +124,14 @@ class SymbolicRegressionFitness:
 
         else:
             if self.evaluations == 1:
-                est = manifold.Isomap(n_neighbors=6)
+                est = manifold.Isomap(n_neighbors=8)
                 est.fit(self.data_batch)
                 self.similarity_matrix_batch = est.dist_matrix_
 
                 if "sammon" in self.fitness:
                     self.similarity_matrix_batch = self.similarity_matrix_batch[np.triu_indices(batch_size, 1)]
 
-            est = manifold.Isomap(n_neighbors=6)
+            est = manifold.Isomap(n_neighbors=8)
             est.fit(output)
             similarity_matrix_pred = est.dist_matrix_
 
