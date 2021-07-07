@@ -109,6 +109,13 @@ class SymbolicRegressionFitness:
         prediction_batch = data[self.indices_array]
         output = individual.GetOutput(prediction_batch)
 
+        condition = False
+        for index in range(output.shape[1]):
+
+            condition = len(np.unique(output[:, index])) == 1
+            if condition:
+                break
+
         if "euclidean" in self.fitness:
             # compute distances on the original data (pca)
             if self.evaluations == 1:
@@ -124,14 +131,14 @@ class SymbolicRegressionFitness:
 
         else:
             if self.evaluations == 1:
-                est = manifold.Isomap(n_neighbors=8)
+                est = manifold.Isomap(n_neighbors=6)
                 est.fit(self.data_batch)
                 self.similarity_matrix_batch = est.dist_matrix_
 
                 if "sammon" in self.fitness:
                     self.similarity_matrix_batch = self.similarity_matrix_batch[np.triu_indices(batch_size, 1)]
 
-            est = manifold.Isomap(n_neighbors=8)
+            est = manifold.Isomap(n_neighbors=6)
             est.fit(output)
             similarity_matrix_pred = est.dist_matrix_
 
@@ -139,16 +146,22 @@ class SymbolicRegressionFitness:
                 similarity_matrix_pred = similarity_matrix_pred[np.triu_indices(batch_size, 1)]
 
         if "sammon" in self.fitness:
-            fitness = np.mean(((self.similarity_matrix_batch - similarity_matrix_pred)**2)/(self.similarity_matrix_batch + 1e-4))
+            if condition:
+                fitness = np.inf
+            else:
+                fitness = np.mean(((self.similarity_matrix_batch - similarity_matrix_pred)**2)/(self.similarity_matrix_batch + 1e-4))
 
         elif "rank" in self.fitness:
 
-            fitness = 0
-            for index in range(batch_size):
-                corr = weightedtau(np.argsort(self.similarity_matrix_batch[index]), np.argsort(similarity_matrix_pred[index]))[0]*-1
-                if np.isnan(corr):
-                    corr = 1
-                fitness += corr
+            if condition:
+                fitness = 1
+            else:
+                fitness = 0
+                for index in range(batch_size):
+                    corr = weightedtau(np.argsort(self.similarity_matrix_batch[index]), np.argsort(similarity_matrix_pred[index]))[0]*-1
+                    if np.isnan(corr):
+                        corr = 1
+                    fitness += corr
 
             fitness /= batch_size
 
