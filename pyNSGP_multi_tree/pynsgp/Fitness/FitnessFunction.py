@@ -154,13 +154,13 @@ class SymbolicRegressionFitness:
         elif "rank" in self.fitness:
 
             if condition:
-                fitness = 1
+                fitness = np.inf
             else:
                 fitness = 0
                 for index in range(batch_size):
-                    corr = weightedtau(np.argsort(self.similarity_matrix_batch[index]), np.argsort(similarity_matrix_pred[index]))[0]*-1
-                    if np.isnan(corr):
-                        corr = 1
+                    rank = np.argsort(np.argsort(np.abs(self.similarity_matrix_batch[index])))
+                    corr = weightedtau(self.similarity_matrix_batch[index], similarity_matrix_pred[index], rank)[0]*-1
+
                     fitness += corr
 
             fitness /= batch_size
