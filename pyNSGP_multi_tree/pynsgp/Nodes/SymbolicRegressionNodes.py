@@ -200,7 +200,7 @@ class EphemeralRandomConstantNode(Node):
         self.c = np.nan
 
     def __Instantiate(self):
-        self.c = np.round(np.random.random() * 10 - 5, 3)
+        self.c = np.round(np.random.random(), 3)
 
     def __repr__(self):
         if np.isnan(self.c):
