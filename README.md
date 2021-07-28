@@ -1,1 +1,1 @@
-multi-objective genetic programming for interpretable dimensionality reduction
+genetic programming for interpretable dimensionality reduction
