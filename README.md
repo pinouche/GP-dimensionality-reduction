@@ -1,4 +1,4 @@
-code for the following paper (under review): 
+code for the following paper (accepted as full paper for GECCO 2022): 
 
 "On genetic programming representations and fitness functions for interpretable dimensionality reduction"
 
